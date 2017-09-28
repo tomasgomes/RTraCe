@@ -140,8 +140,8 @@ processTCR = function(filepath, cells_dic){
 readTracer <- function(summaryPath,
                        recombinants = "recombinants.txt", tcrSum = "TCR_summary.txt") {
 
-  processed_files = processTCR(paste(summary_path, tcrSum),
-                               processRecomb(paste(summary_path, recombinants)))
+  processed_files = processTCR(paste0(summaryPath, tcrSum),
+                               processRecomb(paste0(summaryPath, recombinants)))
 
   tracer_data = t(data.frame(processed_files))
   colnames(tracer_data) = c("clonotype_simp", "A_1", "A_2", "B_1", "B_2",
