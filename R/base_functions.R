@@ -4,6 +4,9 @@
 require(scater)
 require(ggplot2)
 require(googleVis)
+require(reshape2)
+require(igraph)
+
 
 
 # Process recombinants file
@@ -25,7 +28,7 @@ processRecomb = function(filepath){
                            "No", "No", "No", "No")
       }
       if(startsWith(line[2], "No seqs")){
-        cells_dic[cell] = c("NoTCR", "NA", "NA", "NA", "NA",
+        cells_dic[[cell]] = c("NoTCR", "NA", "NA", "NA", "NA",
                            "NA", "NA", "NA", "NA",
                            "No", "No", "No", "No",
                            "No", "No", "No", "No")
@@ -80,17 +83,20 @@ processRecomb = function(filepath){
   return(cells_dic)
 }
 
+
+
 # Process TCR summary file
 ## Adapted from: https://stackoverflow.com/questions/12626637/reading-a-text-file-in-r-line-by-line
 processTCR = function(filepath, cells_dic){
   con = file(filepath, "r")
+  bool_vec = c("multi" = F, "iNKT" = F, "MAIT" = F, "clon" = F)
+  cl_n = 0
   while(TRUE){
     line = readLines(con, n = 1)
     if(length(line) == 0){
       break
     }
-    bool_vec = c("multi" = F, "iNKT" = F, "MAIT" = F, "clon" = F)
-    cl_n = 0
+
     if(grepl("Cells with", line)){
       bool_vec["multi"] = T
     } else if(grepl("iNKT", line)){
@@ -105,9 +111,8 @@ processTCR = function(filepath, cells_dic){
       bool_vec["clon"] = T
     }
 
-    if(startsWith("###", line)){
-
-      cell = gsub(" ###\n", "", gsub("### ", "", line))
+    if(startsWith(line, "###")){
+      cell = gsub(" ###", "", gsub("### ", "", line))
       if(!cell %in% names(cells_dic)){
         cells_dic[[cell]] = c("notAssigned", "No", "No", "No", "No",
                            "No", "No", "No", "No",
@@ -115,18 +120,18 @@ processTCR = function(filepath, cells_dic){
                            "No", "No", "No", "No")
       }
       if(bool_vec["multi"]){
-        cells_dic[[cell]][0] = "Multi_recomb"
+        cells_dic[[cell]][1] = "Multi_recomb"
       }else if(bool_vec["iNKT"]){
-        cells_dic[[cell]][0] = "iNKT"
+        cells_dic[[cell]][1] = "iNKT"
       }else if(bool_vec["MAIT"]){
-        cells_dic[[cell]][0] = "MAIT"
+        cells_dic[[cell]][1] = "MAIT"
       }
     }
     if(bool_vec["clon"] & grepl(",", line)){
       cl_n = cl_n + 1
-      line = unlist(strsplit(gsub("\n", "", line), ","))
+      line = unlist(strsplit(gsub("\n", "", gsub(" ", "", line)), ","))
       for(cell in line){
-        cells_dic[[cell]][0] = paste0("cl", cl_n)
+        cells_dic[[cell]][1] = paste0("cl", cl_n)
       }
     }
   }
@@ -136,20 +141,106 @@ processTCR = function(filepath, cells_dic){
 }
 
 
+
+# Obtain matrix of matching chains between pairs of cells reported as sharing chains
+matchingChainsMatrix <- function(tracerData){
+  cl_tracer_data = tracerData[grepl("cl", tracerData$tcr_info),]
+
+  # Matrix of chains shared
+  labs_chains = rep(c("A", "B", "G", "D"), each = 2)
+  mat_chains = matrix("", nrow(cl_tracer_data), nrow(cl_tracer_data))
+  rownames(mat_chains) = rownames(cl_tracer_data)
+  colnames(mat_chains) = rownames(cl_tracer_data)
+  cell_comb = combn(1:nrow(cl_tracer_data),2)
+  for(comb_col in 1:ncol(cell_comb)){
+    i = cell_comb[1,comb_col]
+    j = cell_comb[2,comb_col]
+    for(k in 2:9){ # Go through detected chains for each cell
+      if(as.character(cl_tracer_data[i,k]) %in% as.character(unlist(cl_tracer_data[j,2:9])) & cl_tracer_data[i,k]!="No"){
+        newchain = labs_chains[k-1]
+        posj = which(as.character(unlist(cl_tracer_data[j,2:9]))==as.character(cl_tracer_data[i,k]))+9
+        mat_chains[i,j] = paste0(mat_chains[i,j],
+                                 ifelse(cl_tracer_data[i,k+8]=="No" | cl_tracer_data[j,posj]=="No",
+                                        tolower(newchain), newchain))
+        mat_chains[j,i] = paste0(mat_chains[j,i],
+                                 ifelse(cl_tracer_data[j,posj]=="No" | cl_tracer_data[i,k+8]=="No",
+                                        tolower(newchain), newchain))
+      }
+    }
+  }
+  return(mat_chains)
+}
+
+# Define Clonotypes based on specific criteria
+defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "custom_cl"){
+  chains_tcr = c("A", "B", "G", "D")
+
+  # Reformat matrix
+  mat_melt = melt(matChains)
+  mat_melt = mat_melt[mat_melt[,1]!=mat_melt[,2] & mat_melt[,3]!="",]
+
+  # Apply filters
+  cond_list = list()
+  for(c_n in 1:length(criteriaList)){ # each filter
+    cond_list[[c_n]] = T
+    crit = criteriaList[[c_n]]
+    for(chain in 1:length(crit[[1]])){ # each chain
+      if(crit[[1]][chain]){ # chain is required
+        if(crit[[2]][chain]){ # chain has to be productive
+          cond_list[[c_n]] = cond_list[[c_n]] & grepl(chains_tcr[chain], mat_melt[,3])
+        }else{
+          cond_list[[c_n]] = cond_list[[c_n]] & (grepl(chains_tcr[chain], mat_melt[,3]) |
+                                                   grepl(tolower(chains_tcr[chain]), mat_melt[,3]))
+        }
+      }
+    }
+  }
+  condition = F
+  for(i in cond_list){
+    condition = condition | i
+  }
+  mat_melt = mat_melt[condition,]
+
+  clusters <- clusters(graph.data.frame(mat_melt[,1:2]))$membership
+  clusters = data.frame(row.names = names(clusters), nameVar = paste0("cl",clusters), stringsAsFactors = F)
+  colnames(clusters) = nameVar
+
+  tracerData = merge(tracerData, clusters, by = 0, all = T)
+  rownames(tracerData) = tracerData[,1]
+  tracerData = tracerData[,-1]
+  tracerData[is.na(tracerData[,nameVar]),nameVar] = as.character(tracerData[is.na(tracerData[,nameVar]),1])
+
+  return(tracerData)
+}
+
 # Read TraCeR results
 readTracer <- function(summaryPath,
-                       recombinants = "recombinants.txt", tcrSum = "TCR_summary.txt") {
+                       recombinants = "recombinants.txt", tcrSum = "TCR_summary.txt",
+                       clonotypes = NULL, nameVar = "custom_cl") {
 
+  # Process recombinants files (in function argument) and TCR info (iNKT, clonotypes, ...)
   processed_files = processTCR(paste0(summaryPath, tcrSum),
                                processRecomb(paste0(summaryPath, recombinants)))
 
+  # Reformat as a data frame
   tracer_data = t(data.frame(processed_files))
-  colnames(tracer_data) = c("clonotype_simp", "A_1", "A_2", "B_1", "B_2",
+  colnames(tracer_data) = paste0("tcr_", c("info", "A_1", "A_2", "B_1", "B_2",
                             "G_1", "G_2", "D_1", "D_2",
                             "pA_1", "pA_2", "pB_1", "pB_2",
-                            "pG_1", "pG_2", "pD_1", "pD_2")
+                            "pG_1", "pG_2", "pD_1", "pD_2"))
   tracer_data = data.frame(tracer_data)
 
+  # Add clonotype information according to the criteria defined
+  # Examples
+  # criteriaList = list(list(c(T, T, F, F), c(T, T, F, F))) - only A and B productive
+  # criteriaList = list(list(c(T, F, F, F), c(T, F, F, F)), list(c(F, T, F, F), c(F, T, F, F))) - either A or B productive
+  if(!is.null(clonotypes)){
+    chains_mat = matchingChainsMatrix(tracer_data)
+    tracer_data = defineClonotypes(tracer_data, chains_mat,
+                                   clonotypes, nameVar = nameVar)
+  }
+
+  return(tracer_data)
 }
 
 
