@@ -1,0 +1,24 @@
+---
+title: "Example workflow"
+output: html_notebook
+---
+
+
+
+Load metadata
+
+```{r}
+metadata = read.table("./data/stubbington_2016/E-MTAB-3857.sdrf.txt", sep = "\t", header = T)
+```
+
+
+
+Load TraCeR results
+
+```{r}
+tracer_simple = readTracer(summaryPath = "./data/stubbington_2016/filtered_TCRABDG_summary/")
+tracer_simple_AB = readTracer(summaryPath = "./data/stubbington_2016/filtered_TCRABDG_summary/", 
+                clonotypes = list(list(c(T, T, F, F), c(T, T, F, F))),
+                nameVar = "clAB")
+```
+

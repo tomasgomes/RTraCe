@@ -171,6 +171,8 @@ matchingChainsMatrix <- function(tracerData){
   return(mat_chains)
 }
 
+
+
 # Define Clonotypes based on specific criteria
 defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "custom_cl"){
   chains_tcr = c("A", "B", "G", "D")
@@ -212,6 +214,8 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
 
   return(tracerData)
 }
+
+
 
 # Read TraCeR results
 readTracer <- function(summaryPath,
