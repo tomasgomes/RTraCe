@@ -1,11 +1,15 @@
 Package: RTraCe
 Type: Package
+Encoding: UTF-8
 Title: Read and plot TraCeR results
 Version: 0.1.0
 Author: person("Tomás", "Gomes", email = "tomas.pc.gomes@gmail.com",
   role = c("aut", "cre"))
+Maintainer: Tomás Gomes <tomas.pc.gomes@gmail.com>
 Description: This package provides an interface to efficiently read TraCeR output and articulate
     it with other data (optionally with scater). It also includes functions for plotting
     clonotype relationships and interactive visualization using a Shiny App.
 License: What license is it under?
+Imports: scater, ggplot2, igraph, reshape2, googleVis
 LazyData: TRUE
+RoxygenNote: 6.0.1

@@ -1,14 +1,5 @@
 # Includes functions for reading and plotting
 
-# import packages
-require(scater)
-require(ggplot2)
-require(googleVis)
-require(reshape2)
-require(igraph)
-
-
-
 # Process recombinants file
 ## Adapted from: https://stackoverflow.com/questions/12626637/reading-a-text-file-in-r-line-by-line
 processRecomb = function(filepath){
@@ -178,7 +169,7 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
   chains_tcr = c("A", "B", "G", "D")
 
   # Reformat matrix
-  mat_melt = melt(matChains)
+  mat_melt = reshape2::melt(matChains)
   mat_melt = mat_melt[mat_melt[,1]!=mat_melt[,2] & mat_melt[,3]!="",]
 
   # Apply filters
@@ -203,7 +194,7 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
   }
   mat_melt = mat_melt[condition,]
 
-  clusters <- clusters(graph.data.frame(mat_melt[,1:2]))$membership
+  clusters <- igraph::clusters(igraph::graph.data.frame(mat_melt[,1:2]))$membership
   clusters = data.frame(row.names = names(clusters), nameVar = paste0("cl",clusters), stringsAsFactors = F)
   colnames(clusters) = nameVar
 
@@ -248,16 +239,21 @@ readTracer <- function(summaryPath,
 }
 
 
+
 # Project clonotypes in tSNE plot
+
 
 
 # Count clonotypes by category
 
 
+
 # Matrix plot showing shared chains
 
 
+
 # Sankey diagramme of clonotype sharing
+
 
 
 # Sankey diagramme of VDJ usage
