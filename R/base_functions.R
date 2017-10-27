@@ -1,6 +1,8 @@
 # Includes functions for reading and plotting
 
+#
 # Process recombinants file
+#
 ## Adapted from: https://stackoverflow.com/questions/12626637/reading-a-text-file-in-r-line-by-line
 processRecomb = function(filepath){
   con = file(filepath, "r")
@@ -75,8 +77,9 @@ processRecomb = function(filepath){
 }
 
 
-
+#
 # Process TCR summary file
+#
 ## Adapted from: https://stackoverflow.com/questions/12626637/reading-a-text-file-in-r-line-by-line
 processTCR = function(filepath, cells_dic){
   con = file(filepath, "r")
@@ -132,8 +135,9 @@ processTCR = function(filepath, cells_dic){
 }
 
 
-
+#
 # Obtain matrix of matching chains between pairs of cells reported as sharing chains
+#
 matchingChainsMatrix <- function(tracerData){
   cl_tracer_data = tracerData[grepl("cl", tracerData$tcr_info),]
 
@@ -163,8 +167,9 @@ matchingChainsMatrix <- function(tracerData){
 }
 
 
-
+#
 # Define Clonotypes based on specific criteria
+#
 defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "custom_cl"){
   chains_tcr = c("A", "B", "G", "D")
 
@@ -207,11 +212,13 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
 }
 
 
-
+#
 # Read TraCeR results
+#
 readTracer <- function(summaryPath,
                        recombinants = "recombinants.txt", tcrSum = "TCR_summary.txt",
-                       clonotypes = NULL, nameVar = "custom_cl") {
+                       clonotypes = NULL, nameVar = "custom_cl",
+                       get_matching_chains = F) {
 
   # Process recombinants files (in function argument) and TCR info (iNKT, clonotypes, ...)
   processed_files = processTCR(paste0(summaryPath, tcrSum),
@@ -229,34 +236,162 @@ readTracer <- function(summaryPath,
   # Examples
   # criteriaList = list(list(c(T, T, F, F), c(T, T, F, F))) - only A and B productive
   # criteriaList = list(list(c(T, F, F, F), c(T, F, F, F)), list(c(F, T, F, F), c(F, T, F, F))) - either A or B productive
-  if(!is.null(clonotypes)){
+  if(get_matching_chains | !is.null(clonotypes)){
     chains_mat = matchingChainsMatrix(tracer_data)
-    tracer_data = defineClonotypes(tracer_data, chains_mat,
-                                   clonotypes, nameVar = nameVar)
+    if(!is.null(clonotypes)){
+      tracer_data = defineClonotypes(tracer_data, chains_mat,
+                                     clonotypes, nameVar = nameVar)
+    }
   }
 
-  return(tracer_data)
+
+  # Define final object to be returned
+  result = list("tracer_metadata" = tracer_data)
+  ## add matching chains matrix
+  result$matching_chains = if(get_matching_chains | !is.null(clonotypes)) chains_mat else NULL
+  ## add VDJ segments table slot
+  result$vdj_segments = NULL
+
+  return(result)
+}
+
+
+#
+# Project clonotypes in dim red plot
+#
+plotProjection <- function(tracer_data, pheno_data,
+                           dimensions = c("dim1", "dim2"), clonotypes = "tcr_info",
+                           additional_pheno = NULL, plot_out = F){
+  if(!is.null(additional_pheno) & length(additional_pheno)>1){
+    stop("Please supply only one variable as additional information.")
+  }
+  if(length(unique(pheno_data[,additional_pheno]))>10){
+    stop("No more than 11 classes can be shown as shapes.")
+  }
+
+  points_df = data.frame(row.names(tracer_data$tracer_metadata),
+                         "tcr_info" = tracer_data$tracer_metadata[,clonotypes])
+  points_df = merge(pheno_data, points_df, by = 0, all.x = T)
+  points_df = points_df[,c("tcr_info", dimensions, additional_pheno)]
+  points_df$tcr_info = as.character(points_df$tcr_info)
+  # Make sure additional_pheno is a factor
+  if(!is.null(additional_pheno) & !is.factor(points_df[,additional_pheno])){
+    points_df[,additional_pheno] = as.factor(points_df[,additional_pheno])
+  }
+  # label cells that do not have a TraCeR output
+  if(sum(is.na(points_df$tcr_info))>1){
+    warning("Not all cells have a TraCeR output.")
+    points_df$tcr_info[is.na(points_df$tcr_info)] = "NO TraCeR"
+  }
+
+  lvl_cl = unique(points_df$tcr_info)
+  non_cl = c("notAssigned", "iNKT", "MAIT", "NoTCR", "NO TraCeR")
+  points_df$tcr_info = factor(points_df$tcr_info, levels = c(lvl_cl[!lvl_cl %in% non_cl], non_cl))
+
+  # DF to draw lines - only for clonotypes
+  lines_df = points_df[grepl("cl", points_df$tcr_info),]
+
+  # define colours and shapes for plot
+  fill_vals = c(RColorBrewer::brewer.pal(8, "Set1"), RColorBrewer::brewer.pal(7, "Set2"), RColorBrewer::brewer.pal(12, "Set3")[-9],
+                RColorBrewer::brewer.pal(8, "Pastel1"), RColorBrewer::brewer.pal(7, "Pastel2"), RColorBrewer::brewer.pal(7, "Dark2"),
+                RColorBrewer::brewer.pal(12, "Paired"), RColorBrewer::brewer.pal(7, "Accent"),
+                RColorBrewer::brewer.pal(11, "Spectral"))
+  if(length(fill_vals)<length(unique(lines_df$tcr_info))){
+    fill_vals = c(fill_vals, viridisLite::viridis(length(unique(lines_df$tcr_info))-length(fill_vals)),
+                  "grey15", "grey40", "grey55", "grey78", "grey93")
+  } else{
+    fill_vals = c(fill_vals[seq(1, length(unique(lines_df$tcr_info)))],
+                  "grey15", "grey40", "grey55", "grey78", "grey93")
+  }
+  shape_vals = c(15, 19:17, 0:2, 5, 6, 8)
+
+  colour_l_vals = fill_vals
+
+  # Make plot
+  plot_proj = ggplot() +
+    geom_line(data = lines_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+                                                    colour = "tcr_info"), size = 1)
+  ## are additional features defined?
+  plot_proj = if(!is.null(additional_pheno)){
+    plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+                                                                  colour = "tcr_info", shape = additional_pheno), size = 1.4)
+  } else{
+    plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+                                                                  colour = "tcr_info"), size = 1.4)
+  }
+  ## cont
+  plot_proj = plot_proj+
+    # scales
+    scale_colour_manual(values = colour_l_vals, drop=FALSE)+
+    scale_shape_manual(values = shape_vals, drop=FALSE)+
+    guides(shape = guide_legend(order = 1))+
+    theme_classic()+
+    theme(legend.text = element_text(size = 8, colour = "black"),
+          legend.title = element_text(size = 9, colour = "black"),
+          axis.title = element_text(size = 9, colour = "black"),
+          axis.text = element_text(size = 7.7, colour = "black"),
+          legend.position="right",
+          legend.key.size = unit(0.3, "cm"),
+          legend.box.spacing = unit(0.03, "cm"))
+
+  if(plot_out){
+    print(plot_proj)
+  }
+  return(plot_proj)
+}
+
+#
+# Count clonotypes by category
+#
+plotCounts <- function(tracer_data, pheno_data, category,
+                       clonotypes = "tcr_info"){
+  if(length(category)>2){
+    stop("Choose at most 2 categories for plotting.")
+  }
+
+  clon_df = data.frame(row.names(tracer_data$tracer_metadata),
+                       "tcr_info" = tracer_data$tracer_metadata[,clonotypes])
+  clon_df = merge(pheno_data, pheno_data, by = 0, all.x = T)
+  clon_df = clon_df[,c("tcr_info", category)]
+  clon_df = clon_df[grepl("cl", clon_df$tcr_info),]
+
+  # Make plot
+  plot_proj = ggplot()
+  plot_proj = if(length(category)==2){
+    plot_proj + facet_wrap() # CHANGE
+  }
+
+  plot_proj = plot_proj + geom_line(data = lines_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+                                                                          colour = "tcr_info", fill = "tcr_info"),
+                                    size = 1)+
+    # scales
+    scale_colour_manual(values = colour_vals)+
+    scale_shape_manual(values = shape_vals)+
+    #guides(shape = guide_legend(nrow = 3))+
+    theme(legend.text = element_text(size = 6),
+          legend.title = element_text(size = 7),
+          axis.title = element_text(size = 7),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position="right",
+          legend.key.size = unit(0.3, "cm"),
+          legend.box.spacing = unit(0.03, "cm"))
 }
 
 
 
-# Project clonotypes in tSNE plot
-
-
-
-# Count clonotypes by category
-
-
-
+#
 # Matrix plot showing shared chains
+#
 
 
-
+#
 # Sankey diagramme of clonotype sharing
+#
 
 
-
+#
 # Sankey diagramme of VDJ usage
-
+#
 
 

@@ -4,21 +4,134 @@ output: html_notebook
 ---
 
 
-
-Load metadata
+Load libraries
 
 ```{r}
-metadata = read.table("./data/stubbington_2016/E-MTAB-3857.sdrf.txt", sep = "\t", header = T)
+library(ggplot2)
+library(biomaRt)
+library(GGally)
 ```
+
+
+
+Load cell metadata
+
+```{r}
+metadata_fastq = read.table("../data/stubbington_2016/E-MTAB-3857.sdrf.txt", sep = "\t", header = T)
+metadata_cells = metadata_fastq[!duplicated(metadata_fastq$Comment.ENA_RUN.),
+                                c("Comment.ENA_RUN.", "Source.Name", "Factor.Value.infect.", "Factor.Value.time.",
+                                  "Characteristics.cell.type.")]
+rownames(metadata_cells) = metadata_cells$Comment.ENA_RUN.
+metadata_cells$Factor.Value.infect. = as.character(metadata_cells$Factor.Value.infect.)
+metadata_cells$Factor.Value.infect.[metadata_cells$Factor.Value.infect.=="Salmonella typhimurium"] = "S. typh"
+```
+
+
+
+Load gene info
+
+```{r}
+# Mouse
+mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                dataset = "mmusculus_gene_ensembl",
+                host = "www.ensembl.org")
+# View(listAttributes(mart))
+bm.q_mouse <- getBM(attributes = c("ensembl_gene_id", "external_gene_name", 
+                               "chromosome_name", "strand", "gene_biotype"),
+                        mart = mart)
+rownames(bm.q_mouse) = bm.q_mouse$ensembl_gene_id
+```
+
+
+Load data
+
+```{r}
+count_data = read.table("../data/stubbington_2016_genes_salmon_counts.txt", header = T, row.names = 1)
+count_data = count_data[grepl("ENS", rownames(count_data)), ]
+count_data = count_data[rowSums(count_data)>0,rownames(metadata_cells)]
+```
+
+
+
+Cell QC
+
+```{r, fig.width=7.1, fig.height=7.1}
+multiqc_tab = read.table("../data/multiqc_salmon.txt", header = T, row.names = 1, sep = "\t")
+
+qc_df = data.frame(row.names = colnames(count_data),
+                   "n_genes" = colSums(count_data>0),
+                   "perc_mt" = colSums(count_data[rownames(count_data) %in% bm.q_mouse[bm.q_mouse$chromosome_name=="MT",
+                                          1],])/colSums(count_data)*100,
+                   "log10_reads" = log10(colSums(count_data)),
+                   "perc_map" = multiqc_tab[colnames(count_data),"percent_mapped"])
+
+x = cbind(qc_df, metadata_cells)[,c(1:4, 7:8)]
+x$Factor.Value.time. = as.factor(x$Factor.Value.time.)
+ggpairs(x, mapping = aes_string(colour = "Factor.Value.time.", shape = "Factor.Value.infect."))+
+  theme_classic()+
+  theme(axis.text = element_text(size = 7.2),
+          axis.text.x = element_text(angle = 20))
+```
+
+
+
+Filter data
+
+```{r}
+use_cells = rownames(qc_df)[qc_df$n_genes>4000 & 
+                              qc_df$perc_mt<=10 &
+                              qc_df$log10_reads>=5.5&
+                              qc_df$perc_map>=40]
+
+metadata_cells_filt = metadata_cells[use_cells,]
+count_data_filt = count_data[,use_cells]
+count_data_filt = count_data_filt[rowSums(count_data_filt>0)>2,]
+```
+
+
 
 
 
 Load TraCeR results
 
 ```{r}
-tracer_simple = readTracer(summaryPath = "./data/stubbington_2016/filtered_TCRABDG_summary/")
-tracer_simple_AB = readTracer(summaryPath = "./data/stubbington_2016/filtered_TCRABDG_summary/", 
+tracer_simple = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/")
+tracer_simple_AB = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/", 
                 clonotypes = list(list(c(T, T, F, F), c(T, T, F, F))),
                 nameVar = "clAB")
 ```
+
+
+
+Run PCA on data
+
+```{r}
+pca = pcaMethods::pca(apply(log2(count_data_filt/colSums(count_data_filt)*1000000+1), 1, scale), method = "svd",
+                          nPcs = 3, scale = "none", center = F)
+```
+
+
+
+Add PCA to metadata
+
+```{r}
+metadata_cells_filt = cbind(metadata_cells_filt, pca@scores)
+
+ggplot(metadata_cells_filt, aes(x = PC1, y = PC2, 
+                                shape = Factor.Value.infect., colour = factor(Factor.Value.time.)))+
+  geom_point()+
+  theme_classic()
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
