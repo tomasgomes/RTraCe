@@ -311,12 +311,12 @@ plotProjection <- function(tracer_data, pheno_data,
   lines_df = points_df[grepl("cl", points_df$tcr_info),]
 
   # define colours and shapes for plot
-  if(length(fill_vals)<length(unique(lines_df$tcr_info))){
-    fill_vals_plt = c(fill_vals, viridisLite::viridis(length(unique(lines_df$tcr_info))-length(fill_vals)),
-                  shade_cols)
+  if(length(.fill_vals)<length(unique(lines_df$tcr_info))){
+    fill_vals_plt = c(.fill_vals, viridisLite::viridis(length(unique(lines_df$tcr_info))-length(.fill_vals)),
+                  .shade_cols)
   } else{
-    fill_vals_plt = c(fill_vals[seq(1, length(unique(lines_df$tcr_info)))],
-                      shade_cols)
+    fill_vals_plt = c(.fill_vals[seq(1, length(unique(lines_df$tcr_info)))],
+                      .shade_cols)
   }
   shape_vals = c(15, 19:17, 0:2, 5, 6, 8)
 
@@ -380,12 +380,12 @@ plotCounts <- function(tracer_data, pheno_data, category,
   clon_df$tcr_info = factor(clon_df$tcr_info, levels = c(lvl_cl[!lvl_cl %in% non_cl], non_cl))
 
   # define colours and shapes for plot
-  if(length(fill_vals)<length(unique(clon_df$tcr_info))){
-    fill_vals_plt = c(fill_vals, viridisLite::viridis(length(unique(clon_df$tcr_info))-length(fill_vals)),
-                  shade_cols)
+  if(length(.fill_vals)<length(unique(clon_df$tcr_info))){
+    fill_vals_plt = c(.fill_vals, viridisLite::viridis(length(unique(clon_df$tcr_info))-length(.fill_vals)),
+                  .shade_cols)
   } else{
-    fill_vals_plt = c(fill_vals[seq(1, length(unique(clon_df$tcr_info[grepl("cl", clon_df$tcr_info)])))],
-                  shade_cols)
+    fill_vals_plt = c(.fill_vals[seq(1, length(unique(clon_df$tcr_info[grepl("cl", clon_df$tcr_info)])))],
+                  .shade_cols)
   }
 
   # Make plot

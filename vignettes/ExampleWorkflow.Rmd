@@ -4,6 +4,9 @@ output: html_notebook
 ---
 
 
+# Example workflow for RTraCe
+
+### Startup
 Load libraries
 
 ```{r}
@@ -47,7 +50,8 @@ rownames(bm.q_mouse) = bm.q_mouse$ensembl_gene_id
 Load data
 
 ```{r}
-count_data = read.table("../data/stubbington_2016_genes_salmon_counts.txt", header = T, row.names = 1)
+count_data = read.table("../data/stubbington_2016/stubbington_2016_genes_salmon_counts.txt", 
+                        header = T, row.names = 1)
 count_data = count_data[grepl("ENS", rownames(count_data)), ]
 count_data = count_data[rowSums(count_data)>0,rownames(metadata_cells)]
 ```
@@ -57,7 +61,8 @@ count_data = count_data[rowSums(count_data)>0,rownames(metadata_cells)]
 Cell QC
 
 ```{r, fig.width=7.1, fig.height=7.1}
-multiqc_tab = read.table("../data/multiqc_salmon.txt", header = T, row.names = 1, sep = "\t")
+multiqc_tab = read.table("../data/stubbington_2016/multiqc_salmon.txt", 
+                         header = T, row.names = 1, sep = "\t")
 
 qc_df = data.frame(row.names = colnames(count_data),
                    "n_genes" = colSums(count_data>0),
@@ -90,6 +95,13 @@ count_data_filt = count_data_filt[rowSums(count_data_filt>0)>2,]
 ```
 
 
+
+### Testing RTraCe package
+Load package
+
+```{r}
+library(RTraCe)
+```
 
 
 
