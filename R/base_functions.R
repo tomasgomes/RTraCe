@@ -1,5 +1,17 @@
 # Includes functions for reading and plotting
 
+
+
+#
+# General variables
+#
+.fill_vals = c(RColorBrewer::brewer.pal(8, "Set1"), RColorBrewer::brewer.pal(7, "Set2"), RColorBrewer::brewer.pal(12, "Set3")[-9],
+              RColorBrewer::brewer.pal(8, "Pastel1"), RColorBrewer::brewer.pal(7, "Pastel2"), RColorBrewer::brewer.pal(7, "Dark2"),
+              RColorBrewer::brewer.pal(12, "Paired"), RColorBrewer::brewer.pal(7, "Accent"),
+              RColorBrewer::brewer.pal(11, "Spectral"))
+.shade_cols = c("grey9", "grey29", "grey55", "grey78", "grey91")
+
+
 #
 # Process recombinants file
 #
@@ -266,7 +278,7 @@ readTracer <- function(summaryPath,
 #
 plotProjection <- function(tracer_data, pheno_data,
                            dimensions = c("dim1", "dim2"), clonotypes = "tcr_info",
-                           additional_pheno = NULL, plot_out = F){
+                           additional_pheno = NULL, plot_out = T){
   if(!is.null(additional_pheno) & length(additional_pheno)>1){
     stop("Please supply only one variable as additional information.")
   }
@@ -292,25 +304,23 @@ plotProjection <- function(tracer_data, pheno_data,
   lvl_cl = unique(points_df$tcr_info)
   non_cl = c("notAssigned", "iNKT", "MAIT", "NoTCR", "NO TraCeR")
   points_df$tcr_info = factor(points_df$tcr_info, levels = c(lvl_cl[!lvl_cl %in% non_cl], non_cl))
+  points_df$iscl = grepl("cl", points_df$tcr_info)
+  points_df$iscl = factor(points_df$iscl, levels = c(F, T))
 
   # DF to draw lines - only for clonotypes
   lines_df = points_df[grepl("cl", points_df$tcr_info),]
 
   # define colours and shapes for plot
-  fill_vals = c(RColorBrewer::brewer.pal(8, "Set1"), RColorBrewer::brewer.pal(7, "Set2"), RColorBrewer::brewer.pal(12, "Set3")[-9],
-                RColorBrewer::brewer.pal(8, "Pastel1"), RColorBrewer::brewer.pal(7, "Pastel2"), RColorBrewer::brewer.pal(7, "Dark2"),
-                RColorBrewer::brewer.pal(12, "Paired"), RColorBrewer::brewer.pal(7, "Accent"),
-                RColorBrewer::brewer.pal(11, "Spectral"))
   if(length(fill_vals)<length(unique(lines_df$tcr_info))){
-    fill_vals = c(fill_vals, viridisLite::viridis(length(unique(lines_df$tcr_info))-length(fill_vals)),
-                  "grey15", "grey40", "grey55", "grey78", "grey93")
+    fill_vals_plt = c(fill_vals, viridisLite::viridis(length(unique(lines_df$tcr_info))-length(fill_vals)),
+                  shade_cols)
   } else{
-    fill_vals = c(fill_vals[seq(1, length(unique(lines_df$tcr_info)))],
-                  "grey15", "grey40", "grey55", "grey78", "grey93")
+    fill_vals_plt = c(fill_vals[seq(1, length(unique(lines_df$tcr_info)))],
+                      shade_cols)
   }
   shape_vals = c(15, 19:17, 0:2, 5, 6, 8)
 
-  colour_l_vals = fill_vals
+  colour_l_vals = fill_vals_plt
 
   # Make plot
   plot_proj = ggplot() +
@@ -319,17 +329,21 @@ plotProjection <- function(tracer_data, pheno_data,
   ## are additional features defined?
   plot_proj = if(!is.null(additional_pheno)){
     plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
-                                                                  colour = "tcr_info", shape = additional_pheno), size = 1.5)
+                                                                  colour = "tcr_info", shape = additional_pheno,
+                                                                  size = "iscl", alpha = "iscl"))
   } else{
     plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
-                                                                  colour = "tcr_info"), size = 1.5)
+                                                                  colour = "tcr_info", size = "iscl", alpha = "iscl"))
   }
   ## cont
   plot_proj = plot_proj+
     # scales
     scale_colour_manual(values = colour_l_vals, drop=FALSE)+
     scale_shape_manual(values = shape_vals, drop=FALSE)+
-    guides(shape = guide_legend(order = 1))+
+    scale_size_manual(values = c(1.2, 2), guide = "none")+
+    scale_alpha_manual(values = c(0.75, 1), guide = "none")+
+    guides(shape = guide_legend(order = 1),
+           colour = guide_legend(order = 2, title = clonotypes))+
     theme_classic()+
     theme(legend.text = element_text(size = 8, colour = "black"),
           legend.title = element_text(size = 9, colour = "black"),
@@ -349,38 +363,56 @@ plotProjection <- function(tracer_data, pheno_data,
 # Count clonotypes by category
 #
 plotCounts <- function(tracer_data, pheno_data, category,
-                       clonotypes = "tcr_info"){
+                       clonotypes = "tcr_info", plot_out = T){
   if(length(category)>2){
     stop("Choose at most 2 categories for plotting.")
   }
 
-  clon_df = data.frame(row.names(tracer_data$tracer_metadata),
+  clon_df = data.frame(row.names = rownames(tracer_data$tracer_metadata),
                        "tcr_info" = tracer_data$tracer_metadata[,clonotypes])
-  clon_df = merge(pheno_data, pheno_data, by = 0, all.x = T)
+  clon_df = merge(pheno_data, clon_df, by = 0, all.x = T)
   clon_df = clon_df[,c("tcr_info", category)]
-  clon_df = clon_df[grepl("cl", clon_df$tcr_info),]
+  #clon_df = clon_df[grepl("cl", clon_df$tcr_info),]
+  colnames(clon_df) = if(length(category)==2) c("tcr_info", "cat1", "cat2") else c("tcr_info", "cat1")
 
-  # Make plot
-  plot_proj = ggplot()
-  plot_proj = if(length(category)==2){
-    plot_proj + facet_wrap() # CHANGE
+  lvl_cl = levels(clon_df$tcr_info)
+  non_cl = c("notAssigned", "iNKT", "MAIT", "NoTCR", "NO TraCeR")
+  clon_df$tcr_info = factor(clon_df$tcr_info, levels = c(lvl_cl[!lvl_cl %in% non_cl], non_cl))
+
+  # define colours and shapes for plot
+  if(length(fill_vals)<length(unique(clon_df$tcr_info))){
+    fill_vals_plt = c(fill_vals, viridisLite::viridis(length(unique(clon_df$tcr_info))-length(fill_vals)),
+                  shade_cols)
+  } else{
+    fill_vals_plt = c(fill_vals[seq(1, length(unique(clon_df$tcr_info[grepl("cl", clon_df$tcr_info)])))],
+                  shade_cols)
   }
 
-  plot_proj = plot_proj + geom_line(data = lines_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
-                                                                          colour = "tcr_info", fill = "tcr_info"),
-                                    size = 1)+
+  # Make plot
+  plot_count = ggplot(clon_df, aes(x = cat1, fill = tcr_info))
+  plot_count = if(length(category)==2){
+    plot_count + facet_wrap(~ cat2)
+  } else {plot_count}
+
+  plot_count = plot_count + geom_bar()+
+    guides(fill = guide_legend(title = clonotypes))+
     # scales
-    scale_colour_manual(values = colour_vals)+
-    scale_shape_manual(values = shape_vals)+
-    #guides(shape = guide_legend(nrow = 3))+
-    theme(legend.text = element_text(size = 6),
-          legend.title = element_text(size = 7),
-          axis.title = element_text(size = 7),
-          axis.text = element_blank(),
-          axis.ticks = element_blank(),
+    scale_y_continuous(expand = c(0,0))+
+    scale_x_discrete(name = category[1])+
+    scale_fill_manual(values = fill_vals_plt)+
+    theme_classic()+
+    theme(legend.text = element_text(size = 8, colour = "black"),
+          legend.title = element_text(size = 9, colour = "black"),
+          axis.title = element_text(size = 9, colour = "black"),
+          axis.text = element_text(size = 7.7, colour = "black"),
           legend.position="right",
           legend.key.size = unit(0.3, "cm"),
           legend.box.spacing = unit(0.03, "cm"))
+
+  if(plot_out){
+    print(plot_count)
+  }
+  return(plot_count)
 }
 
 

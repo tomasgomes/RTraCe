@@ -125,7 +125,14 @@ proj_plot = plotProjection(tracer_data = tracer_simple_AB, pheno_data = metadata
 
 
 
+Plot clonotypes in data projection
 
+```{r}
+proj_plot = plotCounts(tracer_data = tracer_simple_AB, clonotypes = "clAB", pheno_data = metadata_cells_filt, 
+                       category = "Factor.Value.infect.", plot_out = T)
+proj_plot = plotCounts(tracer_data = tracer_simple_AB, clonotypes = "clAB", pheno_data = metadata_cells_filt, 
+                       category = c("Factor.Value.infect.", "Factor.Value.time."), plot_out = T)
+```
 
 
 
