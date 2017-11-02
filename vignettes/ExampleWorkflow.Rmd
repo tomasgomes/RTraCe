@@ -43,6 +43,7 @@ rownames(bm.q_mouse) = bm.q_mouse$ensembl_gene_id
 ```
 
 
+
 Load data
 
 ```{r}
@@ -108,20 +109,46 @@ Run PCA on data
 ```{r}
 pca = pcaMethods::pca(apply(log2(count_data_filt/colSums(count_data_filt)*1000000+1), 1, scale), method = "svd",
                           nPcs = 3, scale = "none", center = F)
+metadata_cells_filt = cbind(metadata_cells_filt, pca@scores)
 ```
 
 
 
-Add PCA to metadata
+Plot clonotypes in data projection
 
 ```{r}
-metadata_cells_filt = cbind(metadata_cells_filt, pca@scores)
-
-ggplot(metadata_cells_filt, aes(x = PC1, y = PC2, 
-                                shape = Factor.Value.infect., colour = factor(Factor.Value.time.)))+
-  geom_point()+
-  theme_classic()
+proj_plot = plotProjection(tracer_data = tracer_simple, pheno_data = metadata_cells_filt, 
+               dimensions = c("PC1", "PC2"), additional_pheno = "Factor.Value.infect.", plot_out = T)
+proj_plot = plotProjection(tracer_data = tracer_simple_AB, pheno_data = metadata_cells_filt, 
+               dimensions = c("PC1", "PC2"), clonotypes = "clAB", additional_pheno = "Factor.Value.infect.", plot_out = T)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

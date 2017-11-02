@@ -199,6 +199,7 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
   }
   mat_melt = mat_melt[condition,]
 
+  # regroup new clonotypes
   clusters <- igraph::clusters(igraph::graph.data.frame(mat_melt[,1:2]))$membership
   clusters = data.frame(row.names = names(clusters), nameVar = paste0("cl",clusters), stringsAsFactors = F)
   colnames(clusters) = nameVar
@@ -206,7 +207,11 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
   tracerData = merge(tracerData, clusters, by = 0, all = T)
   rownames(tracerData) = tracerData[,1]
   tracerData = tracerData[,-1]
-  tracerData[is.na(tracerData[,nameVar]),nameVar] = as.character(tracerData[is.na(tracerData[,nameVar]),1])
+
+  # labels for cells that are not in a clonotype
+  ## cells that were in a clonotype but are not anymore will be assigned as "notAssigned"
+  tracerData[is.na(tracerData[,nameVar]) & grepl("cl", tracerData[,"tcr_info"]), nameVar] = "notAssigned"
+  tracerData[is.na(tracerData[,nameVar]), nameVar] = as.character(tracerData[is.na(tracerData[,nameVar]),1])
 
   return(tracerData)
 }
@@ -269,7 +274,7 @@ plotProjection <- function(tracer_data, pheno_data,
     stop("No more than 11 classes can be shown as shapes.")
   }
 
-  points_df = data.frame(row.names(tracer_data$tracer_metadata),
+  points_df = data.frame(row.names = rownames(tracer_data$tracer_metadata),
                          "tcr_info" = tracer_data$tracer_metadata[,clonotypes])
   points_df = merge(pheno_data, points_df, by = 0, all.x = T)
   points_df = points_df[,c("tcr_info", dimensions, additional_pheno)]
@@ -314,10 +319,10 @@ plotProjection <- function(tracer_data, pheno_data,
   ## are additional features defined?
   plot_proj = if(!is.null(additional_pheno)){
     plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
-                                                                  colour = "tcr_info", shape = additional_pheno), size = 1.4)
+                                                                  colour = "tcr_info", shape = additional_pheno), size = 1.5)
   } else{
     plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
-                                                                  colour = "tcr_info"), size = 1.4)
+                                                                  colour = "tcr_info"), size = 1.5)
   }
   ## cont
   plot_proj = plot_proj+
