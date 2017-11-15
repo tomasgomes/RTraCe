@@ -339,32 +339,32 @@ plotProjection <- function(tracer_data, pheno_data,
   colour_l_vals = fill_vals_plt
 
   # Make plot
-  plot_proj = ggplot() +
-    geom_line(data = lines_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+  plot_proj = ggplot2::ggplot() +
+    ggplot2::geom_line(data = lines_df, mapping = ggplot2::aes_string(x = dimensions[1], y = dimensions[2],
                                                     colour = "tcr_info"), size = 1)
   ## are additional features defined?
   plot_proj = if(!is.null(additional_pheno)){
-    plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+    plot_proj + ggplot2::geom_point(data = points_df, mapping = ggplot2::aes_string(x = dimensions[1], y = dimensions[2],
                                                                   colour = "tcr_info", shape = additional_pheno,
                                                                   size = "iscl", alpha = "iscl"))
   } else{
-    plot_proj + geom_point(data = points_df, mapping = aes_string(x = dimensions[1], y = dimensions[2],
+    plot_proj + ggplot2::geom_point(data = points_df, mapping = ggplot2::aes_string(x = dimensions[1], y = dimensions[2],
                                                                   colour = "tcr_info", size = "iscl", alpha = "iscl"))
   }
   ## cont
   plot_proj = plot_proj+
     # scales
-    scale_colour_manual(values = colour_l_vals, drop=FALSE)+
-    scale_shape_manual(values = shape_vals, drop=FALSE)+
-    scale_size_manual(values = c(1.2, 2), guide = "none")+
-    scale_alpha_manual(values = c(0.75, 1), guide = "none")+
-    guides(shape = guide_legend(order = 1),
-           colour = guide_legend(order = 2, title = clonotypes))+
-    theme_classic()+
-    theme(legend.text = element_text(size = 8, colour = "black"),
-          legend.title = element_text(size = 9, colour = "black"),
-          axis.title = element_text(size = 9, colour = "black"),
-          axis.text = element_text(size = 7.7, colour = "black"),
+    ggplot2::scale_colour_manual(values = colour_l_vals, drop=FALSE)+
+    ggplot2::scale_shape_manual(values = shape_vals, drop=FALSE)+
+    ggplot2::scale_size_manual(values = c(1.2, 2), guide = "none")+
+    ggplot2::scale_alpha_manual(values = c(0.75, 1), guide = "none")+
+    ggplot2::guides(shape = ggplot2::guide_legend(order = 1),
+           colour = ggplot2::guide_legend(order = 2, title = clonotypes))+
+    ggplot2::theme_classic()+
+    ggplot2::theme(legend.text = ggplot2::element_text(size = 8, colour = "black"),
+          legend.title = ggplot2::element_text(size = 9, colour = "black"),
+          axis.title = ggplot2::element_text(size = 9, colour = "black"),
+          axis.text = ggplot2::element_text(size = 7.7, colour = "black"),
           legend.position="right",
           legend.key.size = unit(0.3, "cm"),
           legend.box.spacing = unit(0.03, "cm"))
@@ -407,25 +407,25 @@ plotCounts <- function(tracer_data, pheno_data, category,
   }
 
   # Make plot
-  plot_count = ggplot(clon_df, aes(x = cat1, fill = tcr_info))
+  plot_count = ggplot2::ggplot(clon_df, ggplot2::aes(x = cat1, fill = tcr_info))
   plot_count = if(length(category)==2){
-    plot_count + facet_wrap(~ cat2)
+    plot_count + ggplot2::facet_wrap(~ cat2)
   } else {plot_count}
 
-  plot_count = plot_count + geom_bar()+
-    guides(fill = guide_legend(title = clonotypes))+
+  plot_count = plot_count + ggplot2::geom_bar()+
+    ggplot2::guides(fill = ggplot2::guide_legend(title = clonotypes))+
     # scales
-    scale_y_continuous(expand = c(0,0))+
-    scale_x_discrete(name = category[1])+
-    scale_fill_manual(values = fill_vals_plt)+
-    theme_classic()+
-    theme(legend.text = element_text(size = 8, colour = "black"),
-          legend.title = element_text(size = 9, colour = "black"),
-          axis.title = element_text(size = 9, colour = "black"),
-          axis.text = element_text(size = 7.7, colour = "black"),
+    ggplot2::scale_y_continuous(expand = c(0,0))+
+    ggplot2::scale_x_discrete(name = category[1])+
+    ggplot2::scale_fill_manual(values = fill_vals_plt)+
+    ggplot2::theme_classic()+
+    ggplot2::theme(legend.text = ggplot2::element_text(size = 8, colour = "black"),
+          legend.title = ggplot2::element_text(size = 9, colour = "black"),
+          axis.title = ggplot2::element_text(size = 9, colour = "black"),
+          axis.text = ggplot2::element_text(size = 7.7, colour = "black"),
           legend.position="right",
-          legend.key.size = unit(0.3, "cm"),
-          legend.box.spacing = unit(0.03, "cm"))
+          legend.key.size = ggplot2::unit(0.3, "cm"),
+          legend.box.spacing = ggplot2::unit(0.03, "cm"))
 
   if(plot_out){
     print(plot_count)
@@ -487,21 +487,21 @@ plotSharedClones <- function(tracer_data, pheno_data, category,
   inter_pop_cl = reshape2::melt(inter_pop_cl)
   lab_mat = reshape2::melt(lab_mat)
 
-  plot_shared = ggplot() +
-    geom_point(data = inter_pop_cl,
-               mapping = aes(x = as.character(Var1), y = as.character(Var2), size = as.integer(value)))+
-    geom_text(data = lab_mat,
-              mapping = aes(x = as.character(Var1), y = as.character(Var2), label = value),
+  plot_shared = ggplot2::ggplot() +
+    ggplot2::geom_point(data = inter_pop_cl,
+               mapping = ggplot2::aes(x = as.character(Var1), y = as.character(Var2), size = as.integer(value)))+
+    ggplot2::geom_text(data = lab_mat,
+              mapping = ggplot2::aes(x = as.character(Var1), y = as.character(Var2), label = value),
               colour = "white", size = 4.3, fontface = "bold")+
-    scale_x_discrete(name = category)+
-    scale_y_discrete(name = category)+
-    scale_size_continuous(range = c(4.9, 11))+
-    theme_classic()+
-    theme(axis.title = element_text(size = 10, colour = "black"),
-          axis.text = element_text(size = 9, colour = "black"),
-          axis.line = element_blank(),
-          panel.background = element_rect(fill = "grey72"),
-          panel.grid.major = element_line(colour = "grey90", linetype = "dashed"),
+    ggplot2::scale_x_discrete(name = category)+
+    ggplot2::scale_y_discrete(name = category)+
+    ggplot2::scale_size_continuous(range = c(4.9, 11))+
+    ggplot2::theme_classic()+
+    ggplot2::theme(axis.title = ggplot2::element_text(size = 10, colour = "black"),
+          axis.text = ggplot2::element_text(size = 9, colour = "black"),
+          axis.line = ggplot2::element_blank(),
+          panel.background = ggplot2::element_rect(fill = "grey72"),
+          panel.grid.major = ggplot2::element_line(colour = "grey90", linetype = "dashed"),
           legend.position="none")
 
   if(plot_out){
@@ -538,29 +538,29 @@ plotMatchingChains <- function(tracer_data, pheno_data = NULL,
   mc_text =  reshape2::melt(tracer_data$matching_chains[hc$order,hc$order])
 
   # plot
-  mc_plot = ggplot()+
-    geom_tile(data = mc_count, mapping = aes(x = Var1, y = Var2, fill = value))+
-    geom_text(data = mc_text,
-              mapping = aes(x = Var1, y = Var2, label = value),
+  mc_plot = ggplot2::ggplot()+
+    ggplot2::geom_tile(data = mc_count, mapping = ggplot2::aes(x = Var1, y = Var2, fill = value))+
+    ggplot2::geom_text(data = mc_text,
+              mapping = ggplot2::aes(x = Var1, y = Var2, label = value),
               colour = "white", size = 1.5)+
-    scale_fill_continuous(low = "#078ff2", high = "#241ece", na.value = "white")+
-    scale_y_discrete(name = "Cells")+
-    theme_classic()+
-    theme(axis.title.y = element_text(size = 9, colour = "black"),
-          axis.text.y = element_text(size = 7.5, colour = "black"),
-          axis.text.x = element_blank(),
-          axis.line = element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.title.x = element_blank(),
-          plot.margin = margin(l = 0.07, r = 0.07),
-          panel.background = element_rect(fill = "grey72"),
-          panel.border = element_rect(colour = "black", fill = NA),
+    ggplot2::scale_fill_continuous(low = "#078ff2", high = "#241ece", na.value = "white")+
+    ggplot2::scale_y_discrete(name = "Cells")+
+    ggplot2::theme_classic()+
+    ggplot2::theme(axis.title.y = ggplot2::element_text(size = 9, colour = "black"),
+          axis.text.y = ggplot2::element_text(size = 7.5, colour = "black"),
+          axis.text.x = ggplot2::element_blank(),
+          axis.line = ggplot2::element_blank(),
+          axis.ticks.x = ggplot2::element_blank(),
+          axis.title.x = ggplot2::element_blank(),
+          plot.margin = ggplot2::margin(l = 0.07, r = 0.07),
+          panel.background = ggplot2::element_rect(fill = "grey72"),
+          panel.border = ggplot2::element_rect(colour = "black", fill = NA),
           legend.position="none")
 
   if(cell_names==FALSE){
-    mc_plot = mc_plot + theme(axis.text = element_blank(),
-                              axis.title = element_blank(),
-                              axis.ticks = element_blank())
+    mc_plot = mc_plot + ggplot2::theme(axis.text = ggplot2::element_blank(),
+                              axis.title = ggplot2::element_blank(),
+                              axis.ticks = ggplot2::element_blank())
   }
 
   if(!is.null(pheno_data) & !is.null(categories)){
@@ -569,23 +569,23 @@ plotMatchingChains <- function(tracer_data, pheno_data = NULL,
     colnames(info_data) = c(categories, "Cells")
     info_data = reshape2::melt(info_data, id.var = "Cells")
 
-    sideplot = ggplot()+
-      geom_tile(data = info_data,
-                mapping = aes(x = variable, y = Cells, fill = value))+
-      scale_x_discrete(expand = c(0,0))+
-      guides(fill = guide_legend(title = "Values"))+
-      theme_classic()+
-      theme(legend.title = element_text(size = 9),
+    sideplot = ggplot2::ggplot()+
+      ggplot2::geom_tile(data = info_data,
+                mapping = ggplot2::aes(x = variable, y = Cells, fill = value))+
+      ggplot2::scale_x_discrete(expand = c(0,0))+
+      ggplot2::guides(fill = ggplot2::guide_legend(title = "Values"))+
+      ggplot2::theme_classic()+
+      ggplot2::theme(legend.title = ggplot2::element_text(size = 9),
             legend.text = element_text(size = 7.1),
-            legend.key.size = unit(0.31, "cm"),
-            legend.box.margin = margin(l = 0.05, r = 0.05),
-            legend.margin = margin(l = 0.05, r = 0.05),
-            legend.box.spacing = unit(0.19, "cm"),
-            axis.line = element_blank(),
-            axis.ticks = element_blank(),
-            axis.title = element_blank(),
-            axis.text.y = element_blank(),
-            axis.text.x = element_text(colour = "black", size = 7.8,
+            legend.key.size = ggplot2::unit(0.31, "cm"),
+            legend.box.margin = ggplot2::margin(l = 0.05, r = 0.05),
+            legend.margin = ggplot2::margin(l = 0.05, r = 0.05),
+            legend.box.spacing = ggplot2::unit(0.19, "cm"),
+            axis.line = ggplot2::element_blank(),
+            axis.ticks = ggplot2::element_blank(),
+            axis.title = ggplot2::element_blank(),
+            axis.text.y = ggplot2::element_blank(),
+            axis.text.x = ggplot2::element_text(colour = "black", size = 7.8,
                                        angle = 30, vjust = 0.9, hjust = 0.9))
 
     result = cowplot::plot_grid(mc_plot, sideplot, ncol = 2,
@@ -594,7 +594,7 @@ plotMatchingChains <- function(tracer_data, pheno_data = NULL,
     return(result)
 
   } else{
-    if(plot_out) print(resmc_plotult)
+    if(plot_out) print(mc_plot)
     return(mc_plot)
   }
 
@@ -633,23 +633,23 @@ plotClonotypeSize <- function(tracer_data, pheno_data = NULL, clonotypes = "tcr_
                          "Number" = c(na_n, table(tab_all)))
   }
 
-  plot_cls = ggplot(plot_df, aes(x = size, y = Number))+
-    geom_bar(stat = "identity", fill = "grey2")+
-    scale_y_continuous(expand = c(0,0), limits = c(0, max(plot_df$Number)+max(plot_df$Number)/20))+
-    scale_x_continuous(name = "Clonotype Size")
+  plot_cls = ggplot2::ggplot(plot_df, ggplot2::aes(x = size, y = Number))+
+    ggplot2::geom_bar(stat = "identity", fill = "grey2")+
+    ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, max(plot_df$Number)+max(plot_df$Number)/20))+
+    ggplot2::scale_x_continuous(name = "Clonotype Size")
   if(!is.null(pheno_data) & !is.null(category)){
-    plot_cls = plot_cls + facet_wrap(~ cat) +
-      ggtitle(category)
+    plot_cls = plot_cls + ggplot2::facet_wrap(~ cat) +
+      ggplot2::ggtitle(category)
   }
-  plot_cls = plot_cls + theme_classic()+
-    theme(legend.text = element_text(size = 8, colour = "black"),
-          legend.title = element_text(size = 9, colour = "black"),
-          axis.title = element_text(size = 9, colour = "black"),
-          axis.text = element_text(size = 7.7, colour = "black"),
+  plot_cls = plot_cls + ggplot2::theme_classic()+
+    ggplot2::theme(legend.text = ggplot2::element_text(size = 8, colour = "black"),
+          legend.title = ggplot2::element_text(size = 9, colour = "black"),
+          axis.title = ggplot2::element_text(size = 9, colour = "black"),
+          axis.text = ggplot2::element_text(size = 7.7, colour = "black"),
           legend.position="right",
-          legend.key.size = unit(0.3, "cm"),
-          legend.box.spacing = unit(0.03, "cm"),
-          plot.title = element_text(hjust = 0.5))
+          legend.key.size = ggplot2::unit(0.3, "cm"),
+          legend.box.spacing = ggplot2::unit(0.03, "cm"),
+          plot.title = ggplot2::element_text(hjust = 0.5))
 
   if(plot_out){
     print(plot_cls)
