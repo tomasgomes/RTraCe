@@ -1,11 +1,23 @@
-RTraCe object
-
+RTraCe object current format:
 list
-
 Slot 1: Main Table
 Slot 2: List of tables of correspondence (named according to the variable name defined)
 Slot 3: Table with segments (Cell, V, D, J, chain type, productive)
 
 
 
-https://stackoverflow.com/questions/5249673/how-should-i-handle-helper-functions-in-an-r-package
+TODO:
+  - igraph network of clonotypes (chains and their productivity for edges)
+    - this might be done as one of those cool networks in shiny
+  - implement shiny explorer
+  - V(D)J decomposition
+  - V(D)J to sequence conversion
+    - add sequence translation?
+  - dim red for TCR chains in every cell?
+    - take into account expression? of all or each segment?
+  - calculate distance between cells on TCR space (similar to distance between genomes?)
+  - run TraCeR from R
+  .
+  .
+  .
+  - implement for BraCeR?

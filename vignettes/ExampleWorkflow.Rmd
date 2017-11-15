@@ -35,13 +35,8 @@ Load gene info
 
 ```{r}
 # Mouse
-mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL",
-                dataset = "mmusculus_gene_ensembl",
-                host = "www.ensembl.org")
-# View(listAttributes(mart))
-bm.q_mouse <- getBM(attributes = c("ensembl_gene_id", "external_gene_name", 
-                               "chromosome_name", "strand", "gene_biotype"),
-                        mart = mart)
+bm.q_mouse <- read.table("../data/stubbington_2016/GRCm38.p5_gene_info.txt", header = T, sep = "\t")
+colnames(bm.q_mouse) = c("ensembl_gene_id", "external_gene_name", "chromosome_name", "strand", "gene_biotype")
 rownames(bm.q_mouse) = bm.q_mouse$ensembl_gene_id
 ```
 
@@ -137,7 +132,7 @@ proj_plot = plotProjection(tracer_data = tracer_simple_AB, pheno_data = metadata
 
 
 
-Plot clonotypes in data projection
+Barplots of cells with clonotypes per condition(s)
 
 ```{r}
 proj_plot = plotCounts(tracer_data = tracer_simple_AB, clonotypes = "clAB", pheno_data = metadata_cells_filt, 
@@ -148,11 +143,37 @@ proj_plot = plotCounts(tracer_data = tracer_simple_AB, clonotypes = "clAB", phen
 
 
 
+Shared clonotypes
+
+```{r}
+proj_plot = plotSharedClones(tracer_data = tracer_simple_AB, 
+                             clonotypes = "tcr_info", 
+                             pheno_data = metadata_cells_filt, 
+                             category = "Factor.Value.time.", plot_out = T)
+```
 
 
 
+Matching chains
+
+```{r}
+proj_plot = plotMatchingChains(tracer_data = tracer_simple_AB, 
+                               pheno_data = metadata_cells_filt, 
+                               categories = "Factor.Value.time.", plot_out = T)
+```
 
 
+
+Clonotype sizes
+
+```{r}
+x = plotClonotypeSize(tracer_data = tracer_simple_AB, 
+                               pheno_data = metadata_cells_filt, 
+                               category = "Factor.Value.time.", plot_out = T)
+y = plotClonotypeSize(tracer_data = tracer_simple_AB, 
+                               pheno_data = metadata_cells_filt, 
+                               category = NULL, plot_out = T)
+```
 
 
 

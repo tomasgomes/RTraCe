@@ -159,6 +159,8 @@ matchingChainsMatrix <- function(tracerData){
   rownames(mat_chains) = rownames(cl_tracer_data)
   colnames(mat_chains) = rownames(cl_tracer_data)
   cell_comb = combn(1:nrow(cl_tracer_data),2)
+
+  message("Obtaining matching chains for clonotypes...")
   for(comb_col in 1:ncol(cell_comb)){
     i = cell_comb[1,comb_col]
     j = cell_comb[2,comb_col]
@@ -230,6 +232,19 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
 
 
 #
+# Correct clonotypes
+#
+.correctClonotypes <- function(tcr_info_column){
+  if(any(table(tcr_info_column)==1)){
+    res = tcr_info_column
+    res[res %in% names(table(res)[table(res)==1])] = "notAssigned"
+    message('Some cells with detected clonotypes had no match in the current selection and are masked as "notAssigned"')
+    return(res)
+  }
+}
+
+
+#
 # Read TraCeR results
 #
 readTracer <- function(summaryPath,
@@ -260,7 +275,6 @@ readTracer <- function(summaryPath,
                                      clonotypes, nameVar = nameVar)
     }
   }
-
 
   # Define final object to be returned
   result = list("tracer_metadata" = tracer_data)
@@ -300,6 +314,8 @@ plotProjection <- function(tracer_data, pheno_data,
     warning("Not all cells have a TraCeR output.")
     points_df$tcr_info[is.na(points_df$tcr_info)] = "NO TraCeR"
   }
+  # annotate single clonotypes as "notAssigned"
+  points_df$tcr_info = .correctClonotypes(points_df$tcr_info)
 
   lvl_cl = unique(points_df$tcr_info)
   non_cl = c("notAssigned", "iNKT", "MAIT", "NoTCR", "NO TraCeR")
@@ -359,6 +375,7 @@ plotProjection <- function(tracer_data, pheno_data,
   return(plot_proj)
 }
 
+
 #
 # Count clonotypes by category
 #
@@ -372,8 +389,9 @@ plotCounts <- function(tracer_data, pheno_data, category,
                        "tcr_info" = tracer_data$tracer_metadata[,clonotypes])
   clon_df = merge(pheno_data, clon_df, by = 0, all.x = T)
   clon_df = clon_df[,c("tcr_info", category)]
-  #clon_df = clon_df[grepl("cl", clon_df$tcr_info),]
   colnames(clon_df) = if(length(category)==2) c("tcr_info", "cat1", "cat2") else c("tcr_info", "cat1")
+  # annotate single clonotypes as "notAssigned"
+  clon_df$tcr_info = .correctClonotypes(clon_df$tcr_info)
 
   lvl_cl = levels(clon_df$tcr_info)
   non_cl = c("notAssigned", "iNKT", "MAIT", "NoTCR", "NO TraCeR")
@@ -416,10 +434,228 @@ plotCounts <- function(tracer_data, pheno_data, category,
 }
 
 
-
 #
 # Matrix plot showing shared chains
 #
+plotSharedClones <- function(tracer_data, pheno_data, category,
+                             clonotypes = "tcr_info", plot_out = T){
+  shared_list = list()
+
+  clon_df = data.frame(row.names = rownames(tracer_data$tracer_metadata),
+                       "cl1" = tracer_data$tracer_metadata[,clonotypes[1]])
+  colnames(clon_df)[1] = clonotypes[1]
+  clon_df = merge(pheno_data, clon_df, by = 0, all.x = T)
+  clon_df = clon_df[,c(clonotypes, category)]
+  # annotate single clonotypes as "notAssigned"
+  clon_df$tcr_info = .correctClonotypes(clon_df$tcr_info)
+
+  sub_clon_df = clon_df
+  colnames(sub_clon_df)[which(grepl(clonotypes, x = colnames(sub_clon_df)))] = "classes"
+  colnames(sub_clon_df)[which(grepl(category, x = colnames(sub_clon_df)))] = "cond"
+  sub_clon_df$classes = factor(sub_clon_df$classes,
+                              levels = unique(sub_clon_df$classes)[order(unique(as.character(sub_clon_df$classes)))])
+  sub_clon_df$cond = factor(sub_clon_df$cond)
+  sub_clon_df = sub_clon_df[grepl("cl", sub_clon_df$classes),]
+
+  matrix_counts = matrix(rep(0, length(unique(sub_clon_df$cond))**2),
+                         length(unique(sub_clon_df$cond)), length(unique(sub_clon_df$cond)))
+  rownames(matrix_counts) = unique(sub_clon_df$cond)
+  colnames(matrix_counts) = unique(sub_clon_df$cond)
+  for(cl in unique(sub_clon_df$classes)){
+    sub_pheno = sub_clon_df[sub_clon_df$classes==cl, "cond"]
+
+    comb_pheno = t(combn(sub_pheno, 2))
+    comb_pheno.sort = t(apply(comb_pheno, 1, sort))
+    cor_mat = comb_pheno[!duplicated(comb_pheno.sort),]
+    if(!is.matrix(cor_mat)){
+      cor_mat = matrix(cor_mat, 1, 2)
+    }
+    for(i in 1:nrow(cor_mat)){
+      matrix_counts[cor_mat[i,1],cor_mat[i,2]] = matrix_counts[cor_mat[i,1],cor_mat[i,2]] +1
+      if(cor_mat[i,2]!=cor_mat[i,1]){
+        matrix_counts[cor_mat[i,2],cor_mat[i,1]] = matrix_counts[cor_mat[i,2],cor_mat[i,1]] +1
+      }
+    }
+  }
+  matrix_list = matrix_counts
+
+  inter_pop_cl = matrix_list
+  lab_mat = matrix(as.character(inter_pop_cl), nrow(inter_pop_cl), ncol(inter_pop_cl))
+  rownames(lab_mat) = rownames(inter_pop_cl)
+  colnames(lab_mat) = colnames(inter_pop_cl)
+
+  inter_pop_cl = reshape2::melt(inter_pop_cl)
+  lab_mat = reshape2::melt(lab_mat)
+
+  plot_shared = ggplot() +
+    geom_point(data = inter_pop_cl,
+               mapping = aes(x = as.character(Var1), y = as.character(Var2), size = as.integer(value)))+
+    geom_text(data = lab_mat,
+              mapping = aes(x = as.character(Var1), y = as.character(Var2), label = value),
+              colour = "white", size = 4.3, fontface = "bold")+
+    scale_x_discrete(name = category)+
+    scale_y_discrete(name = category)+
+    scale_size_continuous(range = c(4.9, 11))+
+    theme_classic()+
+    theme(axis.title = element_text(size = 10, colour = "black"),
+          axis.text = element_text(size = 9, colour = "black"),
+          axis.line = element_blank(),
+          panel.background = element_rect(fill = "grey72"),
+          panel.grid.major = element_line(colour = "grey90", linetype = "dashed"),
+          legend.position="none")
+
+  if(plot_out){
+    print(plot_shared)
+  }
+  return(plot_shared)
+
+}
+
+
+#
+# Table for matching chains REMOVE CELLS WITHOUT MATCH AFTER FILTERING
+#
+plotMatchingChains <- function(tracer_data, pheno_data = NULL,
+                               categories = NULL, cell_names = T,
+                               plot_out = T){
+  if(!is.null(pheno_data)){
+    rnpheno = rownames(pheno_data)
+    tcr_info = cbind(rnpheno, as.character(tracer_data$tracer_metadata[rnpheno,"tcr_info"])) # use this to filter
+    tcr_info = tcr_info[grepl("cl", tcr_info[,2]),] # only clonotypes (all)
+    ti_tab = table(tcr_info[,2]) # get cells that after filtering have clonotype
+    rnpheno = tcr_info[which(tcr_info[,2] %in% names(ti_tab[ti_tab>1])),1] # only cells in clonotypes (after filtering)
+    tracer_data$matching_chains = tracer_data$matching_chains[rownames(tracer_data$matching_chains) %in% rnpheno,
+                                                              colnames(tracer_data$matching_chains) %in% rnpheno]
+  }
+  mc_count = nchar(tracer_data$matching_chains)
+  mc_text = tracer_data$matching_chains
+  # cluster shared chains
+  hc = hclust(dist(mc_count,
+                   method = "manhattan"),
+              method = "complete")
+  mc_count = reshape2::melt(mc_count[hc$order,hc$order])
+  mc_count[mc_count==0] = NA
+  mc_text =  reshape2::melt(tracer_data$matching_chains[hc$order,hc$order])
+
+  # plot
+  mc_plot = ggplot()+
+    geom_tile(data = mc_count, mapping = aes(x = Var1, y = Var2, fill = value))+
+    geom_text(data = mc_text,
+              mapping = aes(x = Var1, y = Var2, label = value),
+              colour = "white", size = 1.5)+
+    scale_fill_continuous(low = "#078ff2", high = "#241ece", na.value = "white")+
+    scale_y_discrete(name = "Cells")+
+    theme_classic()+
+    theme(axis.title.y = element_text(size = 9, colour = "black"),
+          axis.text.y = element_text(size = 7.5, colour = "black"),
+          axis.text.x = element_blank(),
+          axis.line = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank(),
+          plot.margin = margin(l = 0.07, r = 0.07),
+          panel.background = element_rect(fill = "grey72"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          legend.position="none")
+
+  if(cell_names==FALSE){
+    mc_plot = mc_plot + theme(axis.text = element_blank(),
+                              axis.title = element_blank(),
+                              axis.ticks = element_blank())
+  }
+
+  if(!is.null(pheno_data) & !is.null(categories)){
+    info_data = data.frame(pheno_data[as.character(unique(mc_count$Var1)),categories])
+    info_data$Cells = unique(mc_count$Var1)
+    colnames(info_data) = c(categories, "Cells")
+    info_data = reshape2::melt(info_data, id.var = "Cells")
+
+    sideplot = ggplot()+
+      geom_tile(data = info_data,
+                mapping = aes(x = variable, y = Cells, fill = value))+
+      scale_x_discrete(expand = c(0,0))+
+      guides(fill = guide_legend(title = "Values"))+
+      theme_classic()+
+      theme(legend.title = element_text(size = 9),
+            legend.text = element_text(size = 7.1),
+            legend.key.size = unit(0.31, "cm"),
+            legend.box.margin = margin(l = 0.05, r = 0.05),
+            legend.margin = margin(l = 0.05, r = 0.05),
+            legend.box.spacing = unit(0.19, "cm"),
+            axis.line = element_blank(),
+            axis.ticks = element_blank(),
+            axis.title = element_blank(),
+            axis.text.y = element_blank(),
+            axis.text.x = element_text(colour = "black", size = 7.8,
+                                       angle = 30, vjust = 0.9, hjust = 0.9))
+
+    result = cowplot::plot_grid(mc_plot, sideplot, ncol = 2,
+                                rel_widths = c(1, 0.21), align = "h")
+  if(plot_out) print(result)
+    return(result)
+
+  } else{
+    if(plot_out) print(resmc_plotult)
+    return(mc_plot)
+  }
+
+}
+
+
+#
+# Clonotype sizes
+#
+plotClonotypeSize <- function(tracer_data, pheno_data = NULL, clonotypes = "tcr_info",
+                          category = NULL, plot_out = T){
+  if(!is.null(pheno_data) & !is.null(category)){
+    plot_df = merge(tracer_data$tracer_metadata, pheno_data, by = 0)[,c(category, clonotypes)]
+    plot_df[,clonotypes] = .correctClonotypes(plot_df[,clonotypes])
+
+    plot_df_cl = plot_df[grepl("cl", as.character(plot_df[,clonotypes])),]
+    plot_df_cl = reshape2::melt(lapply(tapply(plot_df_cl[,clonotypes], plot_df_cl[,category],
+                                              function(x) table(table(x))), cbind))[,-2]
+    plot_df_cl = plot_df_cl[plot_df_cl[,1]!=0,]
+
+    plot_df_na = plot_df[grepl("notAssigned", as.character(plot_df[,clonotypes])),]
+    plot_df_na = reshape2::melt(lapply(tapply(plot_df_na[,clonotypes], plot_df_na[,category],
+                                              function(x) table(table(x))), cbind))[,-2]
+    plot_df_na = plot_df_na[plot_df_na[,1]!=0,]
+    plot_df_na[,2] = plot_df_na[,1]
+    plot_df_na[,1] = 1
+
+    plot_df = rbind(plot_df_na, plot_df_cl)
+    colnames(plot_df) = c("size", "Number", "cat")
+  } else{
+    tab_all = table(tracer_data$tracer_metadata[,clonotypes])
+    na_n = tab_all["notAssigned"]
+    tab_all = tab_all[grepl("cl", names(tab_all))]
+
+    plot_df = data.frame("size" = as.numeric(c(1, names(table(tab_all)))),
+                         "Number" = c(na_n, table(tab_all)))
+  }
+
+  plot_cls = ggplot(plot_df, aes(x = size, y = Number))+
+    geom_bar(stat = "identity", fill = "grey2")+
+    scale_y_continuous(expand = c(0,0), limits = c(0, max(plot_df$Number)+max(plot_df$Number)/20))+
+    scale_x_continuous(name = "Clonotype Size")
+  if(!is.null(pheno_data) & !is.null(category)){
+    plot_cls = plot_cls + facet_wrap(~ cat) +
+      ggtitle(category)
+  }
+  plot_cls = plot_cls + theme_classic()+
+    theme(legend.text = element_text(size = 8, colour = "black"),
+          legend.title = element_text(size = 9, colour = "black"),
+          axis.title = element_text(size = 9, colour = "black"),
+          axis.text = element_text(size = 7.7, colour = "black"),
+          legend.position="right",
+          legend.key.size = unit(0.3, "cm"),
+          legend.box.spacing = unit(0.03, "cm"),
+          plot.title = element_text(hjust = 0.5))
+
+  if(plot_out){
+    print(plot_cls)
+  }
+  return(plot_cls)
+}
 
 
 #
