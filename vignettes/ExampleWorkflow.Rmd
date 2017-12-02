@@ -105,7 +105,7 @@ Load TraCeR results
 ```{r}
 tracer_simple = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/")
 tracer_simple_AB = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/", 
-                clonotypes = list(list(c(T, T, F, F), c(T, T, F, F))),
+                clonotypes = list(c("A"), c("B")),
                 nameVar = "clAB")
 ```
 
@@ -114,7 +114,8 @@ tracer_simple_AB = readTracer(summaryPath = "../data/stubbington_2016/filtered_T
 Run PCA on data
 
 ```{r}
-pca = pcaMethods::pca(apply(log2(count_data_filt/colSums(count_data_filt)*1000000+1), 1, scale), method = "svd",
+pca = pcaMethods::pca(apply(log2(count_data_filt/colSums(count_data_filt)*1000000+1), 
+                            1, scale), method = "svd",
                           nPcs = 3, scale = "none", center = F)
 metadata_cells_filt = cbind(metadata_cells_filt, pca@scores)
 ```

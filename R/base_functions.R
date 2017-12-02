@@ -148,6 +148,30 @@ processTCR = function(filepath, cells_dic){
 
 
 #
+# Define cell chain code
+#
+.cellCode <- function(tracer_data){
+  chains_ref = rep(c("A","B","G","D"), each = 2)
+
+  chains_col = c()
+  for(i in 1:nrow(tracer_data)){
+    if(tracer_data[i, "tcr_info"]=="notAssigned" |
+       grepl("cl", tracer_data[i, "tcr_info"])){
+      chains = tracer_data[i,2:9]
+      chains_code = chains_ref[which(chains!="No")]
+      prod = tracer_data[i,10:17][which(chains!="No")]
+      chains_code[prod=="No"] = tolower(chains_code[prod=="No"])
+      chains_col = c(chains_col, paste0(chains_code, collapse=""))
+    } else{
+      chains_col = c(chains_col, as.character(tracer_data[i, "tcr_info"]))
+    }
+  }
+
+  return(chains_col)
+}
+
+
+#
 # Obtain matrix of matching chains between pairs of cells reported as sharing chains
 #
 matchingChainsMatrix <- function(tracerData){
@@ -182,9 +206,99 @@ matchingChainsMatrix <- function(tracerData){
 
 
 #
+# Cell labeler - used to label cells as gamma-delta
+#
+cellLabeler <- function(tracerData, ref_col = "tcr_info", new_col = "tcr_info_mod",
+                        presentChains = list(c("G", "g"), c("D", "d")), # each group 'or', between 'and'
+                        absentChains = list(c("A", "a"), c("B", "b")),
+                        new_label = "gdCell"){
+  # check if new column exists - issue warning
+  if(ref_col==new_col | new_col %in% colnames(tracerData$tracer_metadata)){
+    warning("You are overwriting an already existing column in tracer_metadata.")
+  }
+
+  # both conditions can't be NULL
+  if(is.null(presentChains) & is.null(absentChains)){
+    stop("Both conditions can not be NULL.")
+  }
+
+  # chain is present
+  if(!is.null(presentChains)){
+    chain_codes = tracerData$tracer_metadata$tcrCode
+    present_cond = list()
+    for(gg in 1:length(presentChains)){
+      start_cond = rep(F, length(chain_codes))
+      for(cc in presentChains[[gg]]){
+        start_cond = start_cond | grepl(cc, chain_codes)
+        chain_codes = sub(cc, "", chain_codes)
+      }
+      present_cond[[gg]] = start_cond
+    }
+    p_c = T
+    for(pc in present_cond){ p_c = p_c & pc }
+  }
+
+  # chain is absent
+  if(!is.null(absentChains)){
+    chain_codes = tracerData$tracer_metadata$tcrCode
+    absent_cond = list()
+    for(gg in 1:length(absentChains)){
+      start_cond = rep(F, length(chain_codes))
+      for(cc in absentChains[[gg]]){
+        start_cond = start_cond | !grepl(cc, chain_codes)
+        chain_codes = sub(cc, "", chain_codes)
+      }
+      absent_cond[[gg]] = start_cond
+    }
+    a_c = T
+    for(ac in absent_cond){ a_c = a_c & ac }
+  }
+
+  # merge info and classify
+  final_cond = if(!is.null(presentChains) & !is.null(absentChains)){
+    p_c & a_c
+  } else if(!is.null(presentChains)){
+    p_c
+  } else if(!is.null(absentChains)){
+    a_c
+  }
+  newcol = as.character(tracerData$tracer_metadata[,ref_col])
+  newcol[final_cond] = new_label
+
+  # add column and return tracerData
+  tracerData$tracer_metadata[,new_col] = newcol
+  return(tracerData)
+
+}
+
+
+# CHANGE
+# Obtain matrix of matching chains between pairs of cells reported as sharing chains
+#
+segmentMatrix <- function(tracerData){
+  chain_cols = c("tcr_A_1", "tcr_A_2", "tcr_B_1", "tcr_B_2",
+                 "tcr_G_1", "tcr_G_2", "tcr_D_1", "tcr_D_2")
+  prod_cols = c("tcr_pA_1", "tcr_pA_2", "tcr_pB_1", "tcr_pB_2",
+                "tcr_pG_1", "tcr_pG_2", "tcr_pD_1", "tcr_pD_2")
+  seg_df = tracerData$tracer_metadata[,-1]
+  seg_df$cell_name = rownames(seg_df)
+
+  # transform matrix
+  seg_df_c = reshape2::melt(seg_df[,c(1:8, 17)], id.vars = "cell_name")
+  seg_df_p = reshape2::melt(seg_df[,9:17], id.vars = "cell_name")
+
+  l_segs = strsplit(seg_df_c$value, "_")
+  l_segs = lapply(l_segs, function(x) if(length(x)<3) rep(x, 3) else x) #CLARIFY HOW THE SEGMENTS WORK
+
+  seg_df_c$productive = seg_df_p$value
+}
+
+
+#
 # Define Clonotypes based on specific criteria
 #
-defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "custom_cl"){
+defineClonotypes <- function(tracerData, matChains, criteriaList,
+                             nameVar = "custom_cl"){
   chains_tcr = c("A", "B", "G", "D")
 
   # Reformat matrix
@@ -192,26 +306,19 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
   mat_melt = mat_melt[mat_melt[,1]!=mat_melt[,2] & mat_melt[,3]!="",]
 
   # Apply filters
-  cond_list = list()
-  for(c_n in 1:length(criteriaList)){ # each filter
-    cond_list[[c_n]] = T
-    crit = criteriaList[[c_n]]
-    for(chain in 1:length(crit[[1]])){ # each chain
-      if(crit[[1]][chain]){ # chain is required
-        if(crit[[2]][chain]){ # chain has to be productive
-          cond_list[[c_n]] = cond_list[[c_n]] & grepl(chains_tcr[chain], mat_melt[,3])
-        }else{
-          cond_list[[c_n]] = cond_list[[c_n]] & (grepl(chains_tcr[chain], mat_melt[,3]) |
-                                                   grepl(tolower(chains_tcr[chain]), mat_melt[,3]))
-        }
-      }
+  chain_codes = mat_melt$value
+  present_cond = list()
+  for(gg in 1:length(criteriaList)){
+    start_cond = rep(F, length(chain_codes))
+    for(cc in criteriaList[[gg]]){
+      start_cond = start_cond | grepl(cc, chain_codes)
+      chain_codes = sub(cc, "", chain_codes)
     }
+    present_cond[[gg]] = start_cond
   }
-  condition = F
-  for(i in cond_list){
-    condition = condition | i
-  }
-  mat_melt = mat_melt[condition,]
+  p_c = T
+  for(pc in present_cond){ p_c = p_c & pc }
+  mat_melt = mat_melt[p_c,]
 
   # regroup new clonotypes
   clusters <- igraph::clusters(igraph::graph.data.frame(mat_melt[,1:2]))$membership
@@ -250,7 +357,8 @@ defineClonotypes <- function(tracerData, matChains, criteriaList, nameVar = "cus
 readTracer <- function(summaryPath,
                        recombinants = "recombinants.txt", tcrSum = "TCR_summary.txt",
                        clonotypes = NULL, nameVar = "custom_cl",
-                       get_matching_chains = F) {
+                       get_matching_chains = F,
+                       get_individual_segments = F) {
 
   # Process recombinants files (in function argument) and TCR info (iNKT, clonotypes, ...)
   processed_files = processTCR(paste0(summaryPath, tcrSum),
@@ -263,17 +371,23 @@ readTracer <- function(summaryPath,
                             "pA_1", "pA_2", "pB_1", "pB_2",
                             "pG_1", "pG_2", "pD_1", "pD_2"))
   tracer_data = data.frame(tracer_data)
+  tracer_data$tcrCode = .cellCode(tracer_data)
 
   # Add clonotype information according to the criteria defined
   # Examples
-  # criteriaList = list(list(c(T, T, F, F), c(T, T, F, F))) - only A and B productive
-  # criteriaList = list(list(c(T, F, F, F), c(T, F, F, F)), list(c(F, T, F, F), c(F, T, F, F))) - either A or B productive
+  # criteriaList = list(c("A"), c("B")) - only A and B productive
+  # criteriaList = list(c("A", "B")) - either A or B productive
   if(get_matching_chains | !is.null(clonotypes)){
     chains_mat = matchingChainsMatrix(tracer_data)
     if(!is.null(clonotypes)){
       tracer_data = defineClonotypes(tracer_data, chains_mat,
                                      clonotypes, nameVar = nameVar)
     }
+  }
+
+  # Add individual segment information
+  if(get_individual_segments){
+
   }
 
   # Define final object to be returned
