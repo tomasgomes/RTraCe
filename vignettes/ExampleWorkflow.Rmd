@@ -103,10 +103,10 @@ library(RTraCe)
 Load TraCeR results
 
 ```{r}
-tracer_simple = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/")
+tracer_simple = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/", get_vdj_segments = T)
 tracer_simple_AB = readTracer(summaryPath = "../data/stubbington_2016/filtered_TCRABDG_summary/", 
                 clonotypes = list(c("A"), c("B")),
-                nameVar = "clAB")
+                nameVar = "clAB", get_vdj_segments = T)
 ```
 
 

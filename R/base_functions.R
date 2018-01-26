@@ -146,7 +146,7 @@ processTCR = function(filepath, cells_dic){
 # Obtain matrix of matching chains between pairs of cells reported as sharing chains
 #
 matchingChainsMatrix <- function(tracerData){
-  cl_tracer_data = tracerData[grepl("cl", tracerData$tcr_info),]
+  cl_tracer_data = tracerData$tracer_metadata[grepl("cl", tracerData$tracer_metadata$tcr_info),]
 
   # Matrix of chains shared
   labs_chains = rep(c("A", "B", "G", "D"), each = 2)
@@ -172,12 +172,14 @@ matchingChainsMatrix <- function(tracerData){
       }
     }
   }
-  return(mat_chains)
+
+  tracerData$matching_chains = mat_chains
+  return(tracerData)
 }
 
 
-# CHANGE
-# Obtain matrix of matching chains between pairs of cells reported as sharing chains
+#
+# Obtain a list of TCR segments for each cell
 #
 segmentMatrix <- function(tracerData){
   chain_cols = c("tcr_A_1", "tcr_A_2", "tcr_B_1", "tcr_B_2",
@@ -186,24 +188,46 @@ segmentMatrix <- function(tracerData){
                 "tcr_pG_1", "tcr_pG_2", "tcr_pD_1", "tcr_pD_2")
   seg_df = tracerData$tracer_metadata[,-1]
   seg_df$cell_name = rownames(seg_df)
+  seg_df = data.frame(lapply(seg_df, as.character), stringsAsFactors = F)
 
   # transform matrix
-  seg_df_c = reshape2::melt(seg_df[,c(1:8, 17)], id.vars = "cell_name")
-  seg_df_p = reshape2::melt(seg_df[,9:17], id.vars = "cell_name")
+  seg_df_c = reshape2::melt(seg_df[,c(grep("tcr_._[12]",
+                                           colnames(seg_df), value = T), "cell_name")],
+                            id.vars = "cell_name")
+  seg_df_p = reshape2::melt(seg_df[,c(grep("tcr_p._[12]",
+                                           colnames(seg_df), value = T), "cell_name")],
+                            id.vars = "cell_name")
 
+  # format matrix
   l_segs = strsplit(seg_df_c$value, "_")
-  l_segs = lapply(l_segs, function(x) if(length(x)<3) rep(x, 3) else x) #CLARIFY HOW THE SEGMENTS WORK
+  l_segs = lapply(l_segs, function(x) if(length(x)>3) c(paste0(x[1], "_", x[2]), x[3:4]) else x)
+  l_segs = lapply(l_segs, function(x) if(length(x)<3) rep(x, 3) else x)
+  l_segs = data.frame(matrix(unlist(l_segs), ncol = 3, byrow = T), stringsAsFactors = F)
+  l_segs$cell_name = seg_df_c$cell_name
+  colnames(l_segs)[1:3] = c("variable", "diversity_link", "joining")
+  l_segs = l_segs[,c(4,1:3)]
+  l_segs$chain = gsub("TR", "", substr(l_segs$variable, 1, 3))
+  l_segs$chain[l_segs$chain %in% c("NA", "No")] = NA
+  l_segs[l_segs=="NA"] = NA
+  l_segs$productive = seg_df_p$value
+  l_segs$productive[rowSums(is.na(l_segs))>1] = NA
+  l_segs = merge(l_segs, tracerData$tracer_metadata[,"tcr_info"], by.x = 1, by.y = 0)
 
-  seg_df_c$productive = seg_df_p$value
+  tracerData$vdj_segments = l_segs
+  return(tracerData)
 }
 
 
 #
 # Define Clonotypes based on specific criteria
 #
-defineClonotypes <- function(tracerData, matChains, criteriaList,
+defineClonotypes <- function(tracerData, criteriaList,
                              nameVar = "custom_cl"){
   chains_tcr = c("A", "B", "G", "D")
+  tracer_meta = tracerData$tracer_metadata
+  matChains = if(!is.null(tracerData$matching_chains)){
+    tracerData$matching_chains
+  } else stop("Matching chains for cells have not been defined.")
 
   # Reformat matrix
   mat_melt = reshape2::melt(matChains)
@@ -229,15 +253,16 @@ defineClonotypes <- function(tracerData, matChains, criteriaList,
   clusters = data.frame(row.names = names(clusters), nameVar = paste0("cl",clusters), stringsAsFactors = F)
   colnames(clusters) = nameVar
 
-  tracerData = merge(tracerData, clusters, by = 0, all = T)
-  rownames(tracerData) = tracerData[,1]
-  tracerData = tracerData[,-1]
+  tracer_meta = merge(tracer_meta, clusters, by = 0, all = T)
+  rownames(tracer_meta) = tracer_meta[,1]
+  tracer_meta = tracer_meta[,-1]
 
   # labels for cells that are not in a clonotype
   ## cells that were in a clonotype but are not anymore will be assigned as "notAssigned"
-  tracerData[is.na(tracerData[,nameVar]) & grepl("cl", tracerData[,"tcr_info"]), nameVar] = "notAssigned"
-  tracerData[is.na(tracerData[,nameVar]), nameVar] = as.character(tracerData[is.na(tracerData[,nameVar]),1])
+  tracer_meta[is.na(tracer_meta[,nameVar]) & grepl("cl", tracer_meta[,"tcr_info"]), nameVar] = "notAssigned"
+  tracer_meta[is.na(tracer_meta[,nameVar]), nameVar] = as.character(tracer_meta[is.na(tracer_meta[,nameVar]),1])
 
+  tracerData$tracer_metadata = tracer_meta
   return(tracerData)
 }
 
@@ -249,7 +274,7 @@ readTracer <- function(summaryPath,
                        recombinants = "recombinants.txt", tcrSum = "TCR_summary.txt",
                        clonotypes = NULL, nameVar = "custom_cl",
                        get_matching_chains = F,
-                       get_individual_segments = F) {
+                       get_vdj_segments = F) {
 
   # Process recombinants files (in function argument) and TCR info (iNKT, clonotypes, ...)
   processed_files = processTCR(paste0(summaryPath, tcrSum),
@@ -264,29 +289,23 @@ readTracer <- function(summaryPath,
   tracer_data = data.frame(tracer_data)
   tracer_data$tcrCode = .cellCode(tracer_data)
 
+  # Define final object to be returned
+  result = list("tracer_metadata" = tracer_data)
+
   # Add clonotype information according to the criteria defined
   # Examples
   # criteriaList = list(c("A"), c("B")) - only A and B productive
   # criteriaList = list(c("A", "B")) - either A or B productive
   if(get_matching_chains | !is.null(clonotypes)){
-    chains_mat = matchingChainsMatrix(tracer_data)
+    result = matchingChainsMatrix(result)
     if(!is.null(clonotypes)){
-      tracer_data = defineClonotypes(tracer_data, chains_mat,
-                                     clonotypes, nameVar = nameVar)
+      result = defineClonotypes(result, clonotypes,
+                                nameVar = nameVar)
     }
   }
 
   # Add individual segment information
-  if(get_individual_segments){
-
-  }
-
-  # Define final object to be returned
-  result = list("tracer_metadata" = tracer_data)
-  ## add matching chains matrix
-  result$matching_chains = if(get_matching_chains | !is.null(clonotypes)) chains_mat else NULL
-  ## add VDJ segments table slot
-  result$vdj_segments = NULL
+  if(get_vdj_segments){ result = segmentMatrix(result) }
 
   return(result)
 }
