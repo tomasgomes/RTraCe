@@ -178,8 +178,19 @@ y = plotClonotypeSize(tracer_data = tracer_simple_AB,
 
 
 
+VDJ combinations
+
+```{r}
+plotVDJmatrix(tracer_simple_AB, pheno_data = metadata_cells_filt, category = "Factor.Value.time.", chain = "B")
+```
 
 
+
+VDJ frequency
+
+```{r}
+plotVDJfrequency(tracer_simple_AB, pheno_data = metadata_cells_filt, category = "Factor.Value.time.", chain = "A")
+```
 
 
 

@@ -378,13 +378,107 @@ plotClonotypeSize <- function(tracer_data, pheno_data = NULL, clonotypes = "tcr_
 }
 
 
-#
-# Sankey diagramme of clonotype sharing
-#
-
 
 #
-# Sankey diagramme of VDJ usage
+# Matrices of VDJ usage
 #
+plotVDJmatrix <- function(tracer_data, pheno_data = NULL, category = NULL,
+                          chain = "B", productive = "Yes", plot_out = T){
+  # subset VDJ
+  vdj_data = tracer_data$vdj_segments[complete.cases(tracer_data$vdj_segments),]
+  vdj_data = vdj_data[vdj_data$chain==chain,]
+  if(productive!="Any") vdj_data = vdj_data[vdj_data$productive==productive,]
+
+  vdj_data_list = list()
+  if(!is.null(pheno_data) & !is.null(category)){
+    for(i in as.character(unique(pheno_data[,category]))){
+      vdj_data_list[[i]] = vdj_data[vdj_data$cell_name %in% rownames(pheno_data)[pheno_data[,category]==i],]
+    }
+  } else{
+    vdj_data_list[["All Cells"]] = vdj_data
+  }
+
+  for(n in names(vdj_data_list)){
+    sub_vdj_data = vdj_data_list[[n]]
+    comb_mat = combn(colnames(sub_vdj_data)[2:4], 2)
+    comb_mat = apply(comb_mat, 2, sort, decreasing = F)
+    # transform data
+    plot_list = list()
+    for(i in 1:ncol(comb_mat)){
+      vdj_data_t = plyr::count(sub_vdj_data[,comb_mat[,i]])
+      vdj_data_t$diversity_link = paste0(substr(vdj_data_t$diversity_link, 1, 30),
+                                         "\n", substr(vdj_data_t$diversity_link, 31, 1000))
+      plot_list[[paste0(n, "_", i)]] = ggplot(vdj_data_t,
+                        aes_string(x = comb_mat[1,i], y = comb_mat[2,i],
+                                   fill = "freq", label = "freq"))+
+        geom_tile(colour = "black")+
+        geom_text(colour = "grey77", size = 3)+
+        guides(fill = guide_colourbar(title = "Freq", barwidth = 0.8))+
+        theme_classic()+
+        theme(axis.text = element_text(colour = "black", size = 7.5),
+              axis.text.x = element_text(colour = "black", angle = 30,
+                                         hjust = 1, vjust = 1, size = 7.5),
+              panel.grid.major = element_line(colour = "grey75"),
+              aspect.ratio = 1/1.8)
+      if(n!="All Cells") plot_list[[paste0(n, "_", i)]] = plot_list[[paste0(n, "_", i)]] + ggtitle(n)
+    }
+  }
+
+  if(plot_out) for(i in 1:length(plot_list)) print(plot_list[[i]])
+  return(plot_list)
+}
+
+
+
+#
+# VDJ frequency
+#
+plotVDJfrequency <- function(tracer_data, pheno_data = NULL, category = NULL,
+                          chain = "B", productive = "Yes", plot_out = T){
+  # subset VDJ
+  vdj_data = tracer_data$vdj_segments[complete.cases(tracer_data$vdj_segments),]
+  vdj_data = vdj_data[vdj_data$chain==chain,]
+  if(productive!="Any") vdj_data = vdj_data[vdj_data$productive==productive,]
+
+  vdj_data_list = list()
+  if(!is.null(pheno_data) & !is.null(category)){
+    for(i in as.character(unique(pheno_data[,category]))){
+      vdj_data_list[[i]] = vdj_data[vdj_data$cell_name %in% rownames(pheno_data)[pheno_data[,category]==i],]
+    }
+  } else{
+    vdj_data_list[["All Cells"]] = vdj_data
+  }
+
+  for(n in names(vdj_data_list)){
+    sub_vdj_data = vdj_data_list[[n]]
+    # transform data
+    plot_list = list()
+    for(i in colnames(sub_vdj_data)[2:4]){
+      vdj_data_t = data.frame(table(sub_vdj_data[,i]), stringsAsFactors = F)
+      colnames(vdj_data_t)[1] = i
+      vdj_data_t$diversity_link = paste0(substr(vdj_data_t$diversity_link, 1, 30),
+                                         "\n", substr(vdj_data_t$diversity_link, 31, 1000))
+      vdj_data_t = vdj_data_t[order(vdj_data_t$Freq, decreasing = T),]
+      vdj_data_t[,1] = factor(as.character(vdj_data_t[,1]), levels = unique(vdj_data_t[,1]))
+      plot_list[[paste0(n, "_", i)]] = ggplot(vdj_data_t,
+                                              aes_string(x = i, y = "Freq", label = "Freq"))+
+        geom_bar(stat = "identity", fill = "black")+
+        geom_label(colour = "black", size = 3.5, label.padding = unit(0.1, "lines"))+
+        scale_y_continuous(limits = c(0, max(vdj_data_t$Freq)+5), expand = c(0,0))+
+        guides(fill = guide_colourbar(title = "Freq", barwidth = 0.8))+
+        theme_classic()+
+        theme(axis.text = element_text(colour = "black", size = 7.5),
+              axis.text.x = element_text(colour = "black", angle = 30,
+                                         hjust = 1, vjust = 1, size = 7.5),
+              aspect.ratio = 1/1.8)
+      if(n!="All Cells") plot_list[[paste0(n, "_", i)]] = plot_list[[paste0(n, "_", i)]] + ggtitle(n)
+    }
+  }
+
+  if(plot_out) for(i in 1:length(plot_list)) print(plot_list[[i]])
+  return(plot_list)
+}
+
+
 
 
