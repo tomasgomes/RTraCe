@@ -147,7 +147,8 @@ processTCR = function(filepath, cells_dic){
         cells_dic[[cell]] = c("notAssigned", "No", "No", "No", "No",
                            "No", "No", "No", "No",
                            "No", "No", "No", "No",
-                           "No", "No", "No", "No")
+                           "No", "No", "No", "No",
+                           "No", "No", "No")
       }
       if(bool_vec["multi"]){
         cells_dic[[cell]][1] = "Multi_recomb"
