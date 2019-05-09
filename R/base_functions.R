@@ -25,16 +25,21 @@ processRecomb = function(filepath){
         cells_dic[[cell]] = c("notAssigned", "No", "No", "No", "No",
                            "No", "No", "No", "No",
                            "No", "No", "No", "No",
-                           "No", "No", "No", "No")
+                           "No", "No", "No", "No",
+                           "No", "No", "No")
       }
       if(startsWith(line[2], "No seqs")){
         cells_dic[[cell]] = c("NoTCR", "NA", "NA", "NA", "NA",
                            "NA", "NA", "NA", "NA",
                            "No", "No", "No", "No",
-                           "No", "No", "No", "No")
+                           "No", "No", "No", "No",
+                           "No", "No", "No")
       } else if(line[2]=="A"){
         seq = line[3]
         prod = ifelse(line[4]=="True", "Yes", "No")
+        rec_len = line[5]
+        CDR3aa = line[6]
+        CDR3nt = line[7]
 
         if(cells_dic[[cell]][2]=="No"){
           cells_dic[[cell]][2] = seq
@@ -43,9 +48,16 @@ processRecomb = function(filepath){
           cells_dic[[cell]][3] = seq
           cells_dic[[cell]][11] = prod
         }
+        cells_dic[[cell]][18] = rec_len
+        cells_dic[[cell]][19] = CDR3aa
+        cells_dic[[cell]][20] = CDR3nt
+        
       } else if(line[2]=="B"){
         seq = line[3]
         prod = ifelse(line[4]=="True", "Yes", "No")
+        rec_len = line[5]
+        CDR3aa = line[6]
+        CDR3nt = line[7]
 
         if(cells_dic[[cell]][4]=="No"){
           cells_dic[[cell]][4] = seq
@@ -54,9 +66,16 @@ processRecomb = function(filepath){
           cells_dic[[cell]][5] = seq
           cells_dic[[cell]][13] = prod
         }
+        cells_dic[[cell]][18] = rec_len
+        cells_dic[[cell]][19] = CDR3aa
+        cells_dic[[cell]][20] = CDR3nt
+        
       } else if(line[2]=="G"){
         seq = line[3]
         prod = ifelse(line[4]=="True", "Yes", "No")
+        rec_len = line[5]
+        CDR3aa = line[6]
+        CDR3nt = line[7]
 
         if(cells_dic[[cell]][6]=="No"){
           cells_dic[[cell]][6] = seq
@@ -65,9 +84,16 @@ processRecomb = function(filepath){
           cells_dic[[cell]][7] = seq
           cells_dic[[cell]][15] = prod
         }
+        cells_dic[[cell]][18] = rec_len
+        cells_dic[[cell]][19] = CDR3aa
+        cells_dic[[cell]][20] = CDR3nt
+        
       } else if(line[2]=="D"){
         seq = line[3]
         prod = ifelse(line[4]=="True", "Yes", "No")
+        rec_len = line[5]
+        CDR3aa = line[6]
+        CDR3nt = line[7]
 
         if(cells_dic[[cell]][8]=="No"){
           cells_dic[[cell]][8] = seq
@@ -76,6 +102,9 @@ processRecomb = function(filepath){
           cells_dic[[cell]][9] = seq
           cells_dic[[cell]][17] = prod
         }
+        cells_dic[[cell]][18] = rec_len
+        cells_dic[[cell]][19] = CDR3aa
+        cells_dic[[cell]][20] = CDR3nt
       }
     }
   }
@@ -285,7 +314,8 @@ readTracer <- function(summaryPath,
   colnames(tracer_data) = paste0("tcr_", c("info", "A_1", "A_2", "B_1", "B_2",
                             "G_1", "G_2", "D_1", "D_2",
                             "pA_1", "pA_2", "pB_1", "pB_2",
-                            "pG_1", "pG_2", "pD_1", "pD_2"))
+                            "pG_1", "pG_2", "pD_1", "pD_2",
+                            "reconstructed_length", "CDR3aa", "CDR3nt"))
   tracer_data = data.frame(tracer_data)
   tracer_data$tcrCode = .cellCode(tracer_data)
 
