@@ -243,14 +243,14 @@ segmentMatrix <- function(tracerData){
                  "tcr_G_1", "tcr_G_2", "tcr_D_1", "tcr_D_2")
   prod_cols = c("tcr_pA_1", "tcr_pA_2", "tcr_pB_1", "tcr_pB_2",
                 "tcr_pG_1", "tcr_pG_2", "tcr_pD_1", "tcr_pD_2")
-  cdr3_cols = c("A_1_recLen", "A_1_CDR3aa", "A_1_CDR3nt", 
-                "A_2_recLen", "A_2_CDR3aa", "A_2_CDR3nt", 
-                "B_1_recLen", "B_1_CDR3aa", "B_1_CDR3nt", 
-                "B_2_recLen", "B_2_CDR3aa", "B_2_CDR3nt", 
-                "G_1_recLen", "G_1_CDR3aa", "G_1_CDR3nt", 
-                "G_2_recLen", "G_2_CDR3aa", "G_2_CDR3nt", 
-                "D_1_recLen", "D_1_CDR3aa", "D_1_CDR3nt", 
-                "D_2_recLen", "D_2_CDR3aa", "D_2_CDR3nt")
+  cdr3_cols = c("tcr_A_1_recLen", "tcr_A_1_CDR3aa", "tcr_A_1_CDR3nt", 
+                "tcr_A_2_recLen", "tcr_A_2_CDR3aa", "tcr_A_2_CDR3nt", 
+                "tcr_B_1_recLen", "tcr_B_1_CDR3aa", "tcr_B_1_CDR3nt", 
+                "tcr_B_2_recLen", "tcr_B_2_CDR3aa", "tcr_B_2_CDR3nt", 
+                "tcr_G_1_recLen", "tcr_G_1_CDR3aa", "tcr_G_1_CDR3nt", 
+                "tcr_G_2_recLen", "tcr_G_2_CDR3aa", "tcr_G_2_CDR3nt", 
+                "tcr_D_1_recLen", "tcr_D_1_CDR3aa", "tcr_D_1_CDR3nt", 
+                "tcr_D_2_recLen", "tcr_D_2_CDR3aa", "tcr_D_2_CDR3nt")
   seg_df = tracerData$tracer_metadata[,-1]
   seg_df$cell_name = rownames(seg_df)
   seg_df = data.frame(lapply(seg_df, as.character), stringsAsFactors = F)
