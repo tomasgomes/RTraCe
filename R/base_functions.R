@@ -262,11 +262,11 @@ segmentMatrix <- function(tracerData){
   seg_df_p = reshape2::melt(seg_df[,c(grep("tcr_p._[12]",
                                            colnames(seg_df), value = T), "cell_name")],
                             id.vars = "cell_name")
-  seg_df_len = reshape2::melt(seg_df[,c(cdr3_cols[1,4,7,10, 13, 16, 19, 22], "cell_name")],
+  seg_df_len = reshape2::melt(seg_df[,c(cdr3_cols[c(1,4,7,10, 13, 16, 19, 22)], "cell_name")],
                               id.vars = "cell_name")
-  seg_df_aa = reshape2::melt(seg_df[,c(cdr3_cols[2,5,8,11,14,17,20,23], "cell_name")],
+  seg_df_aa = reshape2::melt(seg_df[,c(cdr3_cols[c(2,5,8,11,14,17,20,23)], "cell_name")],
                               id.vars = "cell_name")
-  seg_df_nt = reshape2::melt(seg_df[,c(cdr3_cols[3,6,9,12,15,18,21,24], "cell_name")],
+  seg_df_nt = reshape2::melt(seg_df[,c(cdr3_cols[c(3,6,9,12,15,18,21,24)], "cell_name")],
                               id.vars = "cell_name")
 
   # format matrix
