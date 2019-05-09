@@ -24,16 +24,26 @@ processRecomb = function(filepath){
       if(!cell %in% names(cells_dic)){
         cells_dic[[cell]] = c("notAssigned", "No", "No", "No", "No",
                            "No", "No", "No", "No",
+                           # is productive?
                            "No", "No", "No", "No",
                            "No", "No", "No", "No",
-                           "No", "No", "No")
+                           # len and CDR3 for each chain
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No")
       }
       if(startsWith(line[2], "No seqs")){
         cells_dic[[cell]] = c("NoTCR", "NA", "NA", "NA", "NA",
                            "NA", "NA", "NA", "NA",
+                           # is productive?
                            "No", "No", "No", "No",
                            "No", "No", "No", "No",
-                           "No", "No", "No")
+                           # len and CDR3 for each chain
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No")
       } else if(line[2]=="A"){
         seq = line[3]
         prod = ifelse(line[4]=="True", "Yes", "No")
@@ -44,13 +54,16 @@ processRecomb = function(filepath){
         if(cells_dic[[cell]][2]=="No"){
           cells_dic[[cell]][2] = seq
           cells_dic[[cell]][10] = prod
+          cells_dic[[cell]][18] = rec_len
+          cells_dic[[cell]][19] = CDR3aa
+          cells_dic[[cell]][20] = CDR3nt
         } else{
           cells_dic[[cell]][3] = seq
           cells_dic[[cell]][11] = prod
+          cells_dic[[cell]][21] = rec_len
+          cells_dic[[cell]][22] = CDR3aa
+          cells_dic[[cell]][23] = CDR3nt
         }
-        cells_dic[[cell]][18] = rec_len
-        cells_dic[[cell]][19] = CDR3aa
-        cells_dic[[cell]][20] = CDR3nt
         
       } else if(line[2]=="B"){
         seq = line[3]
@@ -62,13 +75,16 @@ processRecomb = function(filepath){
         if(cells_dic[[cell]][4]=="No"){
           cells_dic[[cell]][4] = seq
           cells_dic[[cell]][12] = prod
+          cells_dic[[cell]][24] = rec_len
+          cells_dic[[cell]][25] = CDR3aa
+          cells_dic[[cell]][26] = CDR3nt
         } else{
           cells_dic[[cell]][5] = seq
           cells_dic[[cell]][13] = prod
+          cells_dic[[cell]][27] = rec_len
+          cells_dic[[cell]][28] = CDR3aa
+          cells_dic[[cell]][29] = CDR3nt
         }
-        cells_dic[[cell]][18] = rec_len
-        cells_dic[[cell]][19] = CDR3aa
-        cells_dic[[cell]][20] = CDR3nt
         
       } else if(line[2]=="G"){
         seq = line[3]
@@ -80,13 +96,16 @@ processRecomb = function(filepath){
         if(cells_dic[[cell]][6]=="No"){
           cells_dic[[cell]][6] = seq
           cells_dic[[cell]][14] = prod
+          cells_dic[[cell]][30] = rec_len
+          cells_dic[[cell]][31] = CDR3aa
+          cells_dic[[cell]][32] = CDR3nt
         } else{
           cells_dic[[cell]][7] = seq
           cells_dic[[cell]][15] = prod
+          cells_dic[[cell]][33] = rec_len
+          cells_dic[[cell]][34] = CDR3aa
+          cells_dic[[cell]][35] = CDR3nt
         }
-        cells_dic[[cell]][18] = rec_len
-        cells_dic[[cell]][19] = CDR3aa
-        cells_dic[[cell]][20] = CDR3nt
         
       } else if(line[2]=="D"){
         seq = line[3]
@@ -98,13 +117,16 @@ processRecomb = function(filepath){
         if(cells_dic[[cell]][8]=="No"){
           cells_dic[[cell]][8] = seq
           cells_dic[[cell]][16] = prod
+          cells_dic[[cell]][36] = rec_len
+          cells_dic[[cell]][37] = CDR3aa
+          cells_dic[[cell]][38] = CDR3nt
         } else{
           cells_dic[[cell]][9] = seq
           cells_dic[[cell]][17] = prod
+          cells_dic[[cell]][39] = rec_len
+          cells_dic[[cell]][40] = CDR3aa
+          cells_dic[[cell]][41] = CDR3nt
         }
-        cells_dic[[cell]][18] = rec_len
-        cells_dic[[cell]][19] = CDR3aa
-        cells_dic[[cell]][20] = CDR3nt
       }
     }
   }
@@ -146,9 +168,14 @@ processTCR = function(filepath, cells_dic){
       if(!cell %in% names(cells_dic)){
         cells_dic[[cell]] = c("notAssigned", "No", "No", "No", "No",
                            "No", "No", "No", "No",
+                           # is productive?
                            "No", "No", "No", "No",
                            "No", "No", "No", "No",
-                           "No", "No", "No")
+                           # len and CDR3 for each chain
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No", 
+                           "No", "No", "No", "No", "No", "No")
       }
       if(bool_vec["multi"]){
         cells_dic[[cell]][1] = "Multi_recomb"
@@ -216,6 +243,14 @@ segmentMatrix <- function(tracerData){
                  "tcr_G_1", "tcr_G_2", "tcr_D_1", "tcr_D_2")
   prod_cols = c("tcr_pA_1", "tcr_pA_2", "tcr_pB_1", "tcr_pB_2",
                 "tcr_pG_1", "tcr_pG_2", "tcr_pD_1", "tcr_pD_2")
+  cdr3_cols = c("A_1_recLen", "A_1_CDR3aa", "A_1_CDR3nt", 
+                "A_2_recLen", "A_2_CDR3aa", "A_2_CDR3nt", 
+                "B_1_recLen", "B_1_CDR3aa", "B_1_CDR3nt", 
+                "B_2_recLen", "B_2_CDR3aa", "B_2_CDR3nt", 
+                "G_1_recLen", "G_1_CDR3aa", "G_1_CDR3nt", 
+                "G_2_recLen", "G_2_CDR3aa", "G_2_CDR3nt", 
+                "D_1_recLen", "D_1_CDR3aa", "D_1_CDR3nt", 
+                "D_2_recLen", "D_2_CDR3aa", "D_2_CDR3nt")
   seg_df = tracerData$tracer_metadata[,-1]
   seg_df$cell_name = rownames(seg_df)
   seg_df = data.frame(lapply(seg_df, as.character), stringsAsFactors = F)
@@ -227,6 +262,12 @@ segmentMatrix <- function(tracerData){
   seg_df_p = reshape2::melt(seg_df[,c(grep("tcr_p._[12]",
                                            colnames(seg_df), value = T), "cell_name")],
                             id.vars = "cell_name")
+  seg_df_len = reshape2::melt(seg_df[,c(cdr3_cols[1,4,7,10, 13, 16, 19, 22], "cell_name")],
+                              id.vars = "cell_name")
+  seg_df_aa = reshape2::melt(seg_df[,c(cdr3_cols[2,5,8,11,14,17,20,23], "cell_name")],
+                              id.vars = "cell_name")
+  seg_df_nt = reshape2::melt(seg_df[,c(cdr3_cols[3,6,9,12,15,18,21,24], "cell_name")],
+                              id.vars = "cell_name")
 
   # format matrix
   l_segs = strsplit(seg_df_c$value, "_")
@@ -239,10 +280,19 @@ segmentMatrix <- function(tracerData){
   l_segs$chain = gsub("TR", "", substr(l_segs$variable, 1, 3))
   l_segs$chain[l_segs$chain %in% c("NA", "No")] = NA
   l_segs[l_segs=="NA"] = NA
+                  
   l_segs$productive = seg_df_p$value
   l_segs$productive[rowSums(is.na(l_segs))>1] = NA
+                  
+  l_segs$reconstructed_length = seg_df_len$value
+  l_segs$reconstructed_length[rowSums(is.na(l_segs))>1] = NA
+  l_segs$CDR3aa = seg_df_aa$value
+  l_segs$CDR3aa[rowSums(is.na(l_segs))>1] = NA
+  l_segs$CDR3nt = seg_df_nt$value
+  l_segs$CDR3nt[rowSums(is.na(l_segs))>1] = NA
+                  
   l_segs = merge(l_segs, tracerData$tracer_metadata[,"tcr_info"], by.x = 1, by.y = 0)
-
+  tracerData$tracer_metadata = tracerData$tracer_metadata[,!(colnames(tracerData$tracer_metadata) %in% cdr3_cols)]
   tracerData$vdj_segments = l_segs
   return(tracerData)
 }
@@ -316,7 +366,14 @@ readTracer <- function(summaryPath,
                             "G_1", "G_2", "D_1", "D_2",
                             "pA_1", "pA_2", "pB_1", "pB_2",
                             "pG_1", "pG_2", "pD_1", "pD_2",
-                            "reconstructed_length", "CDR3aa", "CDR3nt"))
+                            "A_1_recLen", "A_1_CDR3aa", "A_1_CDR3nt", 
+                            "A_2_recLen", "A_2_CDR3aa", "A_2_CDR3nt", 
+                            "B_1_recLen", "B_1_CDR3aa", "B_1_CDR3nt", 
+                            "B_2_recLen", "B_2_CDR3aa", "B_2_CDR3nt", 
+                            "G_1_recLen", "G_1_CDR3aa", "G_1_CDR3nt", 
+                            "G_2_recLen", "G_2_CDR3aa", "G_2_CDR3nt", 
+                            "D_1_recLen", "D_1_CDR3aa", "D_1_CDR3nt", 
+                            "D_2_recLen", "D_2_CDR3aa", "D_2_CDR3nt"))
   tracer_data = data.frame(tracer_data)
   tracer_data$tcrCode = .cellCode(tracer_data)
 
