@@ -239,62 +239,67 @@ matchingChainsMatrix <- function(tracerData){
 # Obtain a list of TCR segments for each cell
 #
 segmentMatrix <- function(tracerData){
-  chain_cols = c("tcr_A_1", "tcr_A_2", "tcr_B_1", "tcr_B_2",
-                 "tcr_G_1", "tcr_G_2", "tcr_D_1", "tcr_D_2")
-  prod_cols = c("tcr_pA_1", "tcr_pA_2", "tcr_pB_1", "tcr_pB_2",
-                "tcr_pG_1", "tcr_pG_2", "tcr_pD_1", "tcr_pD_2")
-  cdr3_cols = c("tcr_A_1_recLen", "tcr_A_1_CDR3aa", "tcr_A_1_CDR3nt", 
-                "tcr_A_2_recLen", "tcr_A_2_CDR3aa", "tcr_A_2_CDR3nt", 
-                "tcr_B_1_recLen", "tcr_B_1_CDR3aa", "tcr_B_1_CDR3nt", 
-                "tcr_B_2_recLen", "tcr_B_2_CDR3aa", "tcr_B_2_CDR3nt", 
-                "tcr_G_1_recLen", "tcr_G_1_CDR3aa", "tcr_G_1_CDR3nt", 
-                "tcr_G_2_recLen", "tcr_G_2_CDR3aa", "tcr_G_2_CDR3nt", 
-                "tcr_D_1_recLen", "tcr_D_1_CDR3aa", "tcr_D_1_CDR3nt", 
-                "tcr_D_2_recLen", "tcr_D_2_CDR3aa", "tcr_D_2_CDR3nt")
-  seg_df = tracerData$tracer_metadata[,-1]
-  seg_df$cell_name = rownames(seg_df)
-  seg_df = data.frame(lapply(seg_df, as.character), stringsAsFactors = F)
-
-  # transform matrix
-  seg_df_c = reshape2::melt(seg_df[,c(grep("tcr_._[12]",
-                                           colnames(seg_df), value = T), "cell_name")],
-                            id.vars = "cell_name")
-  seg_df_p = reshape2::melt(seg_df[,c(grep("tcr_p._[12]",
-                                           colnames(seg_df), value = T), "cell_name")],
-                            id.vars = "cell_name")
-  seg_df_len = reshape2::melt(seg_df[,c(cdr3_cols[c(1,4,7,10, 13, 16, 19, 22)], "cell_name")],
-                              id.vars = "cell_name")
-  seg_df_aa = reshape2::melt(seg_df[,c(cdr3_cols[c(2,5,8,11,14,17,20,23)], "cell_name")],
-                              id.vars = "cell_name")
-  seg_df_nt = reshape2::melt(seg_df[,c(cdr3_cols[c(3,6,9,12,15,18,21,24)], "cell_name")],
-                              id.vars = "cell_name")
-
-  # format matrix
-  l_segs = strsplit(seg_df_c$value, "_")
-  l_segs = lapply(l_segs, function(x) if(length(x)>3) c(paste0(x[1], "_", x[2]), x[3:4]) else x)
-  l_segs = lapply(l_segs, function(x) if(length(x)<3) rep(x, 3) else x)
-  l_segs = data.frame(matrix(unlist(l_segs), ncol = 3, byrow = T), stringsAsFactors = F)
-  l_segs$cell_name = seg_df_c$cell_name
-  colnames(l_segs)[1:3] = c("variable", "diversity_link", "joining")
-  l_segs = l_segs[,c(4,1:3)]
-  l_segs$chain = gsub("TR", "", substr(l_segs$variable, 1, 3))
-  l_segs$chain[l_segs$chain %in% c("NA", "No")] = NA
-  l_segs[l_segs=="NA"] = NA
-                  
-  l_segs$productive = seg_df_p$value
-  l_segs$productive[rowSums(is.na(l_segs))>1] = NA
-                  
-  l_segs$reconstructed_length = seg_df_len$value
-  l_segs$reconstructed_length[rowSums(is.na(l_segs))>1] = NA
-  l_segs$CDR3aa = seg_df_aa$value
-  l_segs$CDR3aa[rowSums(is.na(l_segs))>1] = NA
-  l_segs$CDR3nt = seg_df_nt$value
-  l_segs$CDR3nt[rowSums(is.na(l_segs))>1] = NA
-                  
-  l_segs = merge(l_segs, tracerData$tracer_metadata[,"tcr_info"], by.x = 1, by.y = 0)
-  tracerData$tracer_metadata = tracerData$tracer_metadata[,!(colnames(tracerData$tracer_metadata) %in% cdr3_cols)]
-  tracerData$vdj_segments = l_segs
-  return(tracerData)
+    chain_cols = c("tcr_A_1", "tcr_A_2", "tcr_B_1", "tcr_B_2", 
+        "tcr_G_1", "tcr_G_2", "tcr_D_1", "tcr_D_2")
+    prod_cols = c("tcr_pA_1", "tcr_pA_2", "tcr_pB_1", "tcr_pB_2", 
+        "tcr_pG_1", "tcr_pG_2", "tcr_pD_1", "tcr_pD_2")
+    cdr3_cols = c("tcr_A_1_recLen", "tcr_A_1_CDR3aa", "tcr_A_1_CDR3nt", 
+        "tcr_A_2_recLen", "tcr_A_2_CDR3aa", "tcr_A_2_CDR3nt", 
+        "tcr_B_1_recLen", "tcr_B_1_CDR3aa", "tcr_B_1_CDR3nt", 
+        "tcr_B_2_recLen", "tcr_B_2_CDR3aa", "tcr_B_2_CDR3nt", 
+        "tcr_G_1_recLen", "tcr_G_1_CDR3aa", "tcr_G_1_CDR3nt", 
+        "tcr_G_2_recLen", "tcr_G_2_CDR3aa", "tcr_G_2_CDR3nt", 
+        "tcr_D_1_recLen", "tcr_D_1_CDR3aa", "tcr_D_1_CDR3nt", 
+        "tcr_D_2_recLen", "tcr_D_2_CDR3aa", "tcr_D_2_CDR3nt")
+  
+    seg_df = tracerData$tracer_metadata[, -1]
+    seg_df$cell_name = rownames(seg_df)
+    seg_df = data.frame(lapply(seg_df, as.character), stringsAsFactors = F)
+    seg_df_c = reshape2::melt(seg_df[, c(grep("tcr_._[12]$", colnames(seg_df), 
+        value = T), "cell_name")], id.vars = "cell_name")
+    seg_df_p = reshape2::melt(seg_df[, c(grep("tcr_p._[12]$", 
+        colnames(seg_df), value = T), "cell_name")], id.vars = "cell_name")
+    seg_df_len = reshape2::melt(seg_df[, c(cdr3_cols[c(1, 4, 
+        7, 10, 13, 16, 19, 22)], "cell_name")], id.vars = "cell_name")
+    seg_df_aa = reshape2::melt(seg_df[, c(cdr3_cols[c(2, 5, 8, 
+        11, 14, 17, 20, 23)], "cell_name")], id.vars = "cell_name")
+    seg_df_nt = reshape2::melt(seg_df[, c(cdr3_cols[c(3, 6, 9, 
+        12, 15, 18, 21, 24)], "cell_name")], id.vars = "cell_name")
+    
+    l_segs = strsplit(seg_df_c$value, "_")
+    l_segs = lapply(l_segs, function(x) if (length(x) > 3) 
+        c(paste0(x[1], "_", x[2]), x[3:4])
+    else x)
+    l_segs = lapply(l_segs, function(x) if (length(x) < 3) 
+        rep(x, 3)
+    else x)
+    l_segs = data.frame(matrix(unlist(l_segs), ncol = 3, byrow = T), 
+        stringsAsFactors = F)
+    l_segs$cell_name = seg_df_c$cell_name
+    colnames(l_segs)[1:3] = c("variable", "diversity_link", "joining")
+    l_segs = l_segs[, c(4, 1:3)]
+    l_segs$chain = gsub("TR", "", substr(l_segs$variable, 1, 
+        3))
+    l_segs$chain[l_segs$chain %in% c("NA", "No")] = NA
+    l_segs[l_segs == "NA"] = NA
+                    
+    l_segs$productive = seg_df_p$value
+    l_segs$productive[rowSums(is.na(l_segs)) > 1] = NA
+    l_segs$reconstructed_length = seg_df_len$value
+    l_segs$reconstructed_length[rowSums(is.na(l_segs)) > 1] = NA
+    l_segs$CDR3aa = seg_df_aa$value
+    l_segs$CDR3aa[rowSums(is.na(l_segs)) > 1] = NA
+    l_segs$CDR3nt = seg_df_nt$value
+    l_segs$CDR3nt[rowSums(is.na(l_segs)) > 1] = NA
+                    
+    l_segs = merge(l_segs, tracerData$tracer_metadata[, "tcr_info"], 
+        by.x = 1, by.y = 0)
+                    
+    tracerData$tracer_metadata = tracerData$tracer_metadata[, 
+        !(colnames(tracerData$tracer_metadata) %in% cdr3_cols)]
+    tracerData$vdj_segments = l_segs
+                    
+    return(tracerData)
 }
 
 
